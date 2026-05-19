@@ -933,10 +933,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Load Master Data ─────────────────────────────────────────
 async function loadMasterData() {
   try {
-    if (APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbwTJQn7x8v-ez-kYjcvBhAulv-yqvxZLb3udous2E1gzotyTQ23uxJpKV3DzQF7_JM/exec') {
-      loadDemoData();
-      return;
-    }
     const res = await fetch(APPS_SCRIPT_URL + '?action=getMasterData');
     masterData = await res.json();
     populateDropdowns();
@@ -1546,13 +1542,6 @@ async function submitSecurity() {
 async function doSubmit(action, data, successMsg) {
   setLoading(true);
   try {
-    if (APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbwTJQn7x8v-ez-kYjcvBhAulv-yqvxZLb3udous2E1gzotyTQ23uxJpKV3DzQF7_JM/exec') {
-      await new Promise(r => setTimeout(r, 800));
-      setLoading(false);
-      document.getElementById('success-msg').textContent = successMsg + ' (Demo mode — belum terhubung ke Sheets)';
-      go('screen-success');
-      return;
-    }
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action, data }),
