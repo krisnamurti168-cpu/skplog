@@ -1685,6 +1685,47 @@ function renderDash(filter) {
   `).join('');
 }
 
+// ── Lookup helpers ────────────────────────────────────────────
+function lookupNama(id) {
+  if (!id) return '-';
+  const p = (masterData.pegawai||[]).find(x => x.PegawaiID === id || x.Nama === id);
+  return p ? p.Nama : id;
+}
+function lookupKegiatan(id) {
+  if (!id) return '-';
+  const k = (masterData.jenisKegiatanCS||[]).find(x => x.KegiatanID === id || x.NamaKegiatan === id);
+  return k ? k.NamaKegiatan : id;
+}
+function lookupLokasi(id) {
+  if (!id) return '-';
+  const l = (masterData.lokasi||[]).find(x => x.LokasiID === (id||'').trim());
+  return l ? l.NamaLokasi : id;
+}
+function lookupDetailKegiatan(ids) {
+  if (!ids) return '-';
+  return ids.split(',').map(id => {
+    const d = (masterData.detailKegiatan||[]).find(x => x.DetailKegiatanID === id.trim());
+    return d ? d.NamaDetailKegiatan : id.trim();
+  }).filter(Boolean).join(', ');
+}
+function lookupKendaraan(id) {
+  if (!id) return '-';
+  const k = (masterData.kendaraanDinas||[]).find(x => x.KendaraanID === id || x.NamaKendaraan === id);
+  return k ? k.NamaKendaraan + ' (' + k.Plat + ')' : id;
+}
+function lookupKeperluan(id) {
+  if (!id) return '-';
+  const k = (masterData.keperluanDriver||[]).find(x => x.KepID === id || x.NamaKeperluan === id);
+  return k ? k.NamaKeperluan : id;
+}
+function lookupKegiatanPiket(ids) {
+  if (!ids) return '-';
+  return ids.split(',').map(id => {
+    const k = (masterData.kegiatanPiket||[]).find(x => x.KegiatanPiketID === id.trim());
+    return k ? k.NamaKegiatanPiket : id.trim();
+  }).filter(Boolean).join(', ');
+}
+
 // ── List View Data ────────────────────────────────────────────
 let listData = { security: [], driver: [], cs: [] };
 let listFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
@@ -1721,9 +1762,20 @@ function renderList(role, filter) {
   const bodyId = { security: 'sec-list-body', driver: 'drv-list-body', cs: 'cs-list-body' };
   const el = document.getElementById(bodyId[role]);
   const rows = listData[role] || [];
+
+  // Nama kegiatan lengkap untuk filter CS
+  const csKegiatanMap = {
+    'Monitoring': 'Monitoring Kebersihan & Pembersihan Rutin',
+    'KM': 'Pembersihan Rutin Kamar Mandi',
+    'Vakum': 'Kegiatan Vakum',
+    'Slave': 'Pemeliharaan Transportable Slave',
+  };
+
   const filtered = filter === 'semua' ? rows : rows.filter(r => {
     const jk = r.JenisKegiatan || r.Kegiatan || '';
-    return jk === filter || jk.includes(filter);
+    const namaJk = lookupKegiatan(jk);
+    const filterFull = csKegiatanMap[filter] || filter;
+    return jk === filterFull || jk === filter || namaJk === filterFull || namaJk.includes(filter) || jk.includes(filter);
   });
 
   if (!filtered.length) {
@@ -1732,25 +1784,41 @@ function renderList(role, filter) {
   }
 
   el.innerHTML = filtered.map(r => {
-    const ts = r.Timestamp ? new Date(r.Timestamp).toLocaleString('id-ID', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
-    const nama = r.NamaPegawai || '-';
-    const jk   = r.JenisKegiatan || r.Kegiatan || '-';
-    const fu    = (r.PerluFollowUp === 'Y' || r.PerluFollowUp === true) ? '<span class="badge badge-fu">Follow Up</span>' : '<span class="badge badge-ok">Selesai</span>';
-    const foto  = r.Foto ? `<img class="li-foto" src="${r.Foto}" onclick="window.open('${r.Foto}','_blank')" onerror="this.style.display='none'">` : '<div class="li-foto-placeholder">📷</div>';
+    const ts   = r.Timestamp ? new Date(r.Timestamp).toLocaleString('id-ID', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
+    const nama = lookupNama(r.NamaPegawai);
+    const jkRaw = r.JenisKegiatan || r.Kegiatan || '-';
+    const jk   = role === 'cs' ? lookupKegiatan(jkRaw) : jkRaw;
+    const fu   = (r.PerluFollowUp === 'Y' || r.PerluFollowUp === true)
+      ? '<span class="badge badge-fu">Follow Up</span>'
+      : '<span class="badge badge-ok">Selesai</span>';
+    const foto = r.Foto
+      ? `<img class="li-foto" src="${r.Foto}" onclick="window.open('${r.Foto}','_blank')" onerror="this.style.display='none'">`
+      : '<div class="li-foto-placeholder">📷</div>';
 
-    // Detail info per role
     let detail = '';
     if (role === 'security') {
-      if (jk === 'Piket Keamanan') detail = `Shift: ${r.Shift||'-'} &bull; ${r.KegiatanPiketDilakukan||r.KegiatanPiket||'-'}`;
-      else if (jk === 'Pencatatan Kendaraan') detail = `${r.StatusKendaraan||''} &bull; ${r.KendaraanDinas||r.PlatNomor||'-'} &bull; ${r.Keperluan||'-'}`;
-      else if (jk === 'Surat dan Paket') detail = `${r.JenisPaket||'-'} &bull; ${r.Pengirim||'-'} → ${r.Penerima||'-'} &bull; ${r.StatusPengiriman||'-'}`;
-      else if (jk === 'Pengecekan Genset') detail = `Accu: ${r.KondisiAccu||'-'} &bull; Radiator: ${r.KondisiRadiator||'-'} &bull; BBM: ${r.StokBBMGenset||'-'}`;
+      if (jkRaw === 'Piket Keamanan') {
+        const kp = lookupKegiatanPiket(r.KegiatanPiket||r.KegiatanPiketDilakukan||'');
+        detail = `Shift: ${r.Shift||'-'} &bull; ${kp}`;
+      } else if (jkRaw === 'Pencatatan Kendaraan') {
+        const kend = lookupKendaraan(r.KendaraanDinas);
+        const kep  = lookupKeperluan(r.Keperluan);
+        detail = `${r.StatusKendaraan||''} &bull; ${kend} &bull; ${kep}`;
+      } else if (jkRaw === 'Surat dan Paket') {
+        detail = `${r.JenisPaket||'-'} &bull; ${r.Pengirim||'-'} → ${r.Penerima||'-'} &bull; ${r.StatusPengiriman||'-'}`;
+      } else if (jkRaw === 'Pengecekan Genset') {
+        detail = `Accu: ${r.KondisiAccu||'-'} &bull; Radiator: ${r.KondisiRadiator||'-'} &bull; BBM: ${r.StokBBMGenset||'-'}`;
+      }
     } else if (role === 'driver') {
-      if (jk.includes('BBM')) detail = `${r.KendaraanDinas||'-'} &bull; Rp ${Number(r.NominalBBM||0).toLocaleString('id-ID')}`;
-      else if (jk.includes('Rekapitulasi')) detail = `${r.KendaraanDinas||'-'} &bull; ${r.TahapKegiatan||'-'} &bull; Odo: ${r.OdometerAwal||r.OdometerAkhir||'-'}`;
-      else if (jk.includes('Kondisi')) detail = `${r.KendaraanDinas||'-'} &bull; Odo: ${r.OdometerValue||'-'} km`;
+      const kend = lookupKendaraan(r.KendaraanDinas);
+      if (jkRaw.includes('BBM')) detail = `${kend} &bull; Rp ${Number(r.NominalBBM||0).toLocaleString('id-ID')}`;
+      else if (jkRaw.includes('Rekapitulasi')) detail = `${kend} &bull; ${r.TahapKegiatan||'-'} &bull; Odo: ${r.OdometerAwal||r.OdometerAkhir||'-'}`;
+      else if (jkRaw.includes('Kondisi')) detail = `${kend} &bull; Odo: ${r.OdometerValue||'-'} km`;
     } else if (role === 'cs') {
-      detail = `${r.Kantor||'-'} &bull; ${r.Lokasi||'-'} &bull; ${(r.DetailKegiatanDilakukan||'').substring(0,50)}${(r.DetailKegiatanDilakukan||'').length > 50 ? '...' : ''}`;
+      const lokasiNama = lookupLokasi(r.Lokasi);
+      const detailNama = lookupDetailKegiatan(r.DetailKegiatanDilakukan||'');
+      const shortDetail = detailNama.length > 60 ? detailNama.substring(0,60)+'...' : detailNama;
+      detail = `${r.Kantor||'-'} &bull; ${lokasiNama} &bull; ${shortDetail}`;
     }
 
     return `
@@ -1762,7 +1830,7 @@ function renderList(role, filter) {
             ${fu}
           </div>
           <div class="li-sub"><b>${jk}</b><br>${detail}</div>
-          <div class="li-meta">${ts} &bull; ${r.Kantor||r.kantor||''}</div>
+          <div class="li-meta">${ts} &bull; ${r.Kantor||''}</div>
         </div>
         ${foto}
       </div>
@@ -1770,7 +1838,7 @@ function renderList(role, filter) {
   }).join('');
 }
 
-// ── Update Dashboard dengan real data ─────────────────────────
+// ── Dashboard real data ───────────────────────────────────────
 async function loadDashboard() {
   document.getElementById('dash-list').innerHTML = '<div class="list-loading">Memuat data...</div>';
   try {
@@ -1799,14 +1867,16 @@ function renderDash(filter) {
   list.innerHTML = filtered.map(d => {
     const role = (d._role||'').toLowerCase();
     const ts   = d.Timestamp ? new Date(d.Timestamp).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
-    const jk   = d.JenisKegiatan || d.Kegiatan || '-';
+    const jkRaw = d.JenisKegiatan || d.Kegiatan || '-';
+    const jk   = role === 'cs' ? lookupKegiatan(jkRaw) : jkRaw;
+    const nama = lookupNama(d.NamaPegawai);
     const fu   = d.PerluFollowUp === 'Y';
     return `
     <div class="list-item ${role}">
       <div class="li-row">
         <div class="li-main">
           <div class="li-row" style="margin-bottom:4px">
-            <span class="li-name">${icons[d._role]||''} ${d.NamaPegawai||'-'}</span>
+            <span class="li-name">${icons[d._role]||''} ${nama}</span>
             <span class="badge ${fu?'badge-fu':'badge-ok'}">${fu?'Follow Up':'Selesai'}</span>
           </div>
           <div class="li-sub">${d._role} — ${jk}</div>
