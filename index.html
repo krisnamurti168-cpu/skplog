@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKP Log — PPPK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Variables ── */
+:root {
+  --bg: #F4F3EF;
+  --surface: #FFFFFF;
+  --surface2: #EEEDE9;
+  --border: #DDDCD8;
+  --text: #1A1916;
+  --text2: #6B6A66;
+  --text3: #9E9D99;
+  --accent-sec: #1B4F2A;
+  --accent-drv: #1A3A5C;
+  --accent-cs:  #5C2D1A;
+  --accent-gen: #4A1A1A;
+  --green: #2D6A3F;
+  --red: #A32D2D;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.07), 0 4px 12px rgba(0,0,0,.05);
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── Layout ── */
+.app { max-width: 480px; margin: 0 auto; padding: 0 0 80px; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ── Header ── */
+.top-bar {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+}
+.top-bar h1 { font-size: 16px; font-weight: 600; flex: 1; }
+.top-bar .subtitle { font-size: 12px; color: var(--text2); font-weight: 400; display: block; margin-top: 1px; }
+.back-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--surface); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text2); font-size: 18px; flex-shrink: 0;
+  transition: background .15s;
+}
+.back-btn:hover { background: var(--surface2); }
+
+/* ── Home ── */
+.home-header {
+  padding: 28px 20px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.home-header .logo {
+  font-family: var(--mono);
+  font-size: 11px; color: var(--text3);
+  letter-spacing: .1em; text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.home-header h2 { font-size: 26px; font-weight: 600; letter-spacing: -.5px; }
+.home-header p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+.section-title {
+  font-size: 11px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 20px 20px 10px;
+}
+
+.role-grid { padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.role-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 16px; cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  position: relative; overflow: hidden;
+}
+.role-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.role-card.security::before { background: var(--accent-sec); }
+.role-card.driver::before   { background: var(--accent-drv); }
+.role-card.cs::before       { background: var(--accent-cs); }
+.role-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.role-card .emoji { font-size: 24px; margin-bottom: 10px; display: block; }
+.role-card .label { font-size: 14px; font-weight: 600; }
+.role-card .sub   { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.role-card.cs-full { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; }
+.role-card.cs-full .emoji { margin-bottom: 0; }
+.role-card.cs-full .role-info { flex: 1; }
+
+.dashboard-card {
+  margin: 10px 20px 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px; cursor: pointer;
+  transition: background .15s;
+}
+.dashboard-card:hover { background: var(--surface2); }
+.dashboard-card .icon { font-size: 22px; }
+.dashboard-card .info { flex: 1; }
+.dashboard-card .info b { display: block; font-size: 14px; font-weight: 600; }
+.dashboard-card .info span { font-size: 12px; color: var(--text2); }
+.dashboard-card .arrow { color: var(--text3); font-size: 18px; }
+
+/* ── Form ── */
+.form-body { padding: 20px; }
+.form-group { margin-bottom: 18px; }
+.form-group label {
+  display: block; font-size: 12px; font-weight: 600;
+  color: var(--text2); margin-bottom: 7px; letter-spacing: .02em;
+}
+.form-group label .req { color: var(--red); margin-left: 2px; }
+
+input[type=text], input[type=number], input[type=date],
+input[type=time], input[type=file], select, textarea {
+  width: 100%; padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text);
+  font-family: var(--font); font-size: 14px;
+  transition: border-color .15s;
+  appearance: none; -webkit-appearance: none;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--text);
+}
+textarea { resize: vertical; min-height: 80px; }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B6A66' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+
+/* Enum buttons (Y/N, Masuk/Keluar, dll) */
+.enum-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.enum-btn {
+  flex: 1; min-width: 80px; padding: 10px 14px; text-align: center;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer; font-size: 14px;
+  font-family: var(--font); font-weight: 500; color: var(--text2);
+  transition: all .15s;
+}
+.enum-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+.enum-btn.active-green { background: var(--green); color: #fff; border-color: var(--green); }
+.enum-btn.active-red   { background: var(--red);   color: #fff; border-color: var(--red);   }
+
+/* Checkbox multi-select */
+.checkbox-group { display: flex; flex-direction: column; gap: 6px; }
+.checkbox-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: background .1s;
+}
+.checkbox-item:hover { background: var(--surface2); }
+.checkbox-item input[type=checkbox] { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--text); }
+.checkbox-item span { font-size: 14px; }
+.checkbox-item.checked { background: var(--surface2); border-color: var(--text); }
+
+/* Divider */
+.divider { border: none; border-top: 1px solid var(--border); margin: 8px 0 20px; }
+.divider-label {
+  font-size: 11px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 14px; display: block;
+}
+
+/* Submit button */
+.submit-btn {
+  width: 100%; padding: 14px; background: var(--text); color: #fff;
+  border: none; border-radius: var(--radius-sm); font-size: 15px;
+  font-weight: 600; font-family: var(--font); cursor: pointer;
+  margin-top: 8px; transition: opacity .15s;
+}
+.submit-btn:active { opacity: .8; }
+.submit-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.hidden { display: none !important; }
+
+/* ── Success ── */
+.success-wrap { text-align: center; padding: 60px 30px; }
+.success-wrap .check { font-size: 56px; margin-bottom: 16px; }
+.success-wrap h2 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+.success-wrap p { color: var(--text2); font-size: 14px; margin-bottom: 28px; }
+.success-wrap .btn-home {
+  display: inline-block; padding: 12px 28px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer; font-size: 14px;
+  font-family: var(--font); font-weight: 500; color: var(--text);
+  transition: background .15s;
+}
+.success-wrap .btn-home:hover { background: var(--surface2); }
+
+/* ── Loading ── */
+.loading-overlay {
+  position: fixed; inset: 0; background: rgba(244,243,239,.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999; backdrop-filter: blur(4px);
+}
+.loading-overlay .spinner {
+  width: 36px; height: 36px; border: 3px solid var(--border);
+  border-top-color: var(--text); border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: #fff; padding: 12px 20px;
+  border-radius: 999px; font-size: 14px; font-weight: 500;
+  z-index: 1000; opacity: 0; transition: opacity .3s;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* ── Dashboard ── */
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 20px 16px; }
+.stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 12px; text-align: center; }
+.stat-box .num { font-size: 24px; font-weight: 600; }
+.stat-box .lbl { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.filter-tabs { display: flex; gap: 6px; padding: 0 20px 16px; overflow-x: auto; }
+.filter-tab {
+  padding: 7px 14px; border-radius: 999px; font-size: 13px;
+  white-space: nowrap; cursor: pointer; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text2); font-family: var(--font);
+  transition: all .15s;
+}
+.filter-tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+.log-list { padding: 0 20px; }
+.log-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+}
+.log-item .li-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.log-item .li-name { font-weight: 600; font-size: 14px; }
+.log-item .li-detail { font-size: 13px; color: var(--text2); }
+.log-item .li-time { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 4px; }
+.badge {
+  font-size: 11px; font-weight: 600; padding: 3px 8px;
+  border-radius: 999px; white-space: nowrap;
+}
+.badge-fu { background: #FCEBEB; color: var(--red); }
+.badge-ok { background: #E6F4EA; color: var(--green); }
+.badge-pending { background: #FFF3E0; color: #A05A00; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+<!-- ══ HOME ══════════════════════════════════════════════════ -->
+<div class="screen active" id="screen-home">
+  <div class="home-header">
+    <div class="logo">PPPK — Aplikasi Log Kegiatan</div>
+    <h2>SKP Log</h2>
+    <p id="home-date"></p>
+  </div>
+
+  <div class="section-title">Input Kegiatan</div>
+  <div class="role-grid">
+    <div class="role-card security" onclick="go('screen-security')">
+      <span class="emoji">🛡️</span>
+      <div class="label">Security</div>
+      <div class="sub">Piket & Kendaraan</div>
+    </div>
+    <div class="role-card driver" onclick="go('screen-driver')">
+      <span class="emoji">🚗</span>
+      <div class="label">Driver</div>
+      <div class="sub">Pengantaran & Kendaraan</div>
+    </div>
+    <div class="role-card cs cs-full" onclick="go('screen-cs')">
+      <span class="emoji">🧹</span>
+      <div class="role-info">
+        <div class="label">CS / OB</div>
+        <div class="sub">Kebersihan & Pemeliharaan</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Laporan</div>
+  <div class="dashboard-card" onclick="go('screen-dashboard')">
+    <span class="icon">📊</span>
+    <div class="info">
+      <b>Dashboard & Riwayat</b>
+      <span>Semua kegiatan & follow up</span>
+    </div>
+    <span class="arrow">›</span>
+  </div>
+</div>
+
+<!-- ══ CS FORM ════════════════════════════════════════════════ -->
+<div class="screen" id="screen-cs">
+  <div class="top-bar">
+    <button class="back-btn" onclick="go('screen-home')">‹</button>
+    <div>
+      <h1>Form CS / OB</h1>
+      <span class="subtitle">Catat kegiatan harian</span>
+    </div>
+  </div>
+  <div class="form-body">
+
+    <div class="form-group">
+      <label>Tanggal</label>
+      <input type="date" id="cs-tanggal">
+    </div>
+
+    <div class="form-group">
+      <label>Nama Pegawai <span class="req">*</span></label>
+      <select id="cs-pegawai">
+        <option value="">— Pilih nama —</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Jenis Kegiatan <span class="req">*</span></label>
+      <select id="cs-kegiatan" onchange="csOnKegiatan()">
+        <option value="">— Pilih kegiatan —</option>
+      </select>
+    </div>
+
+    <!-- Kantor (muncul setelah pilih kegiatan) -->
+    <div class="form-group hidden" id="cs-kantor-wrap">
+      <label>Kantor <span class="req">*</span></label>
+      <div class="enum-group">
+        <button class="enum-btn" onclick="csSetKantor('Kalasan',this)">Kalasan</button>
+        <button class="enum-btn" onclick="csSetKantor('Veteran',this)">Veteran</button>
+        <button class="enum-btn" onclick="csSetKantor('Girijati',this)">Girijati</button>
+        <button class="enum-btn" onclick="csSetKantor('Girimulyo',this)">Girimulyo</button>
+      </div>
+    </div>
+
+    <!-- Lokasi (muncul setelah pilih kantor) -->
+    <div class="form-group hidden" id="cs-lokasi-wrap">
+      <label>Lokasi <span class="req">*</span></label>
+      <select id="cs-lokasi" onchange="csOnLokasi()">
+        <option value="">— Pilih lokasi —</option>
+      </select>
+    </div>
+
+    <!-- Detail Kegiatan (muncul setelah pilih lokasi) -->
+    <div class="form-group hidden" id="cs-detail-wrap">
+      <label>Detail Kegiatan Dilakukan <span class="req">*</span></label>
+      <div class="checkbox-group" id="cs-detail-list"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Foto <span class="req">*</span></label>
+      <input type="file" id="cs-foto" accept="image/*" capture="environment">
+    </div>
+
+    <div class="form-group">
+      <label>Catatan</label>
+      <textarea id="cs-catatan" placeholder="Catatan tambahan..."></textarea>
+    </div>
+
+    <hr class="divider">
+    <span class="divider-label">Follow Up</span>
+
+    <div class="form-group">
+      <label>Perlu Follow Up?</label>
+      <div class="enum-group">
+        <button class="enum-btn active" id="cs-fu-n" onclick="csSetFU('N')">Tidak</button>
+        <button class="enum-btn" id="cs-fu-y" onclick="csSetFU('Y')">Ya</button>
+      </div>
+    </div>
+
+    <div id="cs-fu-fields" class="hidden">
+      <div class="form-group">
+        <label>Prioritas</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="enumSelect(this,'cs-prioritas')">Biasa</button>
+          <button class="enum-btn" onclick="enumSelect(this,'cs-prioritas')">Segera</button>
+          <button class="enum-btn" onclick="enumSelect(this,'cs-prioritas')">Sangat Segera</button>
+        </div>
+        <input type="hidden" id="cs-prioritas">
+      </div>
+      <div class="form-group">
+        <label>Jenis Laporan</label>
+        <select id="cs-jenis-laporan" onchange="csOnJenisLaporan()">
+          <option value="">— Pilih —</option>
+          <option>Laporan Kerusakan</option>
+          <option>Laporan Kehilangan</option>
+          <option>Laporan Permintaan Barang</option>
+          <option>Laporan Lainnya</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label id="cs-detail-laporan-label">Detail Laporan</label>
+        <textarea id="cs-detail-laporan" placeholder="Tulis detail laporan..."></textarea>
+      </div>
+      <div class="form-group hidden" id="cs-jumlah-wrap">
+        <label>Jumlah Barang</label>
+        <input type="number" id="cs-jumlah" min="1" placeholder="0">
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="submitCS()">Simpan Kegiatan</button>
+  </div>
+</div>
+
+<!-- ══ DRIVER FORM ════════════════════════════════════════════ -->
+<div class="screen" id="screen-driver">
+  <div class="top-bar">
+    <button class="back-btn" onclick="go('screen-home')">‹</button>
+    <div>
+      <h1>Form Driver</h1>
+      <span class="subtitle">Catat kegiatan pengantaran</span>
+    </div>
+  </div>
+  <div class="form-body">
+
+    <div class="form-group">
+      <label>Tanggal</label>
+      <input type="date" id="drv-tanggal">
+    </div>
+    <div class="form-group">
+      <label>Nama Pegawai <span class="req">*</span></label>
+      <select id="drv-pegawai">
+        <option value="">— Pilih nama —</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Kantor</label>
+      <div class="enum-group">
+        <button class="enum-btn" onclick="enumSelect(this,'drv-kantor')">Kantor Kalasan</button>
+        <button class="enum-btn" onclick="enumSelect(this,'drv-kantor')">Kantor Veteran</button>
+      </div>
+      <input type="hidden" id="drv-kantor">
+    </div>
+    <div class="form-group">
+      <label>Jenis Kegiatan <span class="req">*</span></label>
+      <select id="drv-kegiatan" onchange="drvOnKegiatan()">
+        <option value="">— Pilih kegiatan —</option>
+        <option>Penggunaan BBM Kendaraan Dinas</option>
+        <option>Rekapitulasi Penggunaan Kendaraan Dinas</option>
+        <option>Laporan Kondisi Kendaraan Dinas Roda Empat</option>
+      </select>
+    </div>
+
+    <!-- ─ BBM ─ -->
+    <div id="drv-bbm-fields" class="hidden">
+      <span class="divider-label">Detail BBM</span>
+      <div class="form-group">
+        <label>Kendaraan Dinas</label>
+        <select id="drv-bbm-kendaraan"><option value="">— Pilih —</option></select>
+      </div>
+      <div class="form-group">
+        <label>Tipe Kegiatan</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="drvSetTipeKeg('Umum',this)">Umum</button>
+          <button class="enum-btn" onclick="drvSetTipeKeg('Tusi',this)">Tusi</button>
+        </div>
+      </div>
+      <div class="form-group hidden" id="drv-st-wrap">
+        <label>Nomor ST</label>
+        <input type="text" id="drv-nomor-st" placeholder="Nomor Surat Tugas">
+      </div>
+      <div class="form-group">
+        <label>Nominal BBM (Rp)</label>
+        <input type="number" id="drv-nominal-bbm" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Kegiatan BBM</label>
+        <select id="drv-kegiatan-bbm"><option value="">— Pilih —</option></select>
+      </div>
+      <div class="form-group hidden" id="drv-bbm-lainnya-wrap">
+        <label>Kegiatan Lainnya</label>
+        <input type="text" id="drv-bbm-lainnya" placeholder="Tulis kegiatan...">
+      </div>
+      <div class="form-group">
+        <label>Foto Struk BBM <span class="req">*</span></label>
+        <input type="file" id="drv-foto-bbm" accept="image/*" capture="environment">
+      </div>
+    </div>
+
+    <!-- ─ Rekapitulasi ─ -->
+    <div id="drv-rekap-fields" class="hidden">
+      <span class="divider-label">Detail Rekapitulasi</span>
+      <div class="form-group">
+        <label>Kendaraan Dinas</label>
+        <select id="drv-rekap-kendaraan"><option value="">— Pilih —</option></select>
+      </div>
+      <div class="form-group">
+        <label>Hari / Tanggal Bertugas</label>
+        <input type="date" id="drv-hari">
+      </div>
+      <div class="form-group">
+        <label>Tahap Kegiatan</label>
+        <select id="drv-tahap" onchange="drvOnTahap()">
+          <option value="">— Pilih tahap —</option>
+          <option>Persiapan Kendaraan</option>
+          <option>Selama bertugas</option>
+          <option>Setelah bertugas</option>
+        </select>
+      </div>
+      <div class="form-group hidden" id="drv-uraian-wrap">
+        <label>Uraian Kegiatan <span class="req">*</span></label>
+        <div class="checkbox-group" id="drv-uraian-list"></div>
+        <div style="margin-top:8px">
+          <input type="text" id="drv-uraian-custom" placeholder="+ Tambah uraian manual...">
+          <button type="button" onclick="drvAddUraian()" style="margin-top:6px;padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);cursor:pointer;font-size:13px;font-family:var(--font);">Tambah</button>
+        </div>
+      </div>
+      <div class="form-group hidden" id="drv-odometer-awal-wrap">
+        <label>Odometer Awal (KM)</label>
+        <input type="number" id="drv-odometer-awal" placeholder="0">
+      </div>
+      <div class="form-group hidden" id="drv-odometer-akhir-wrap">
+        <label>Odometer Akhir (KM)</label>
+        <input type="number" id="drv-odometer-akhir" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Foto Tambahan</label>
+        <input type="file" id="drv-foto-rekap" accept="image/*" capture="environment">
+      </div>
+    </div>
+
+    <!-- ─ Kondisi Kendaraan ─ -->
+    <div id="drv-kondisi-fields" class="hidden">
+      <span class="divider-label">Kondisi Kendaraan</span>
+      <div class="form-group">
+        <label>Kendaraan Dinas</label>
+        <select id="drv-kondisi-kendaraan"><option value="">— Pilih —</option></select>
+      </div>
+      <div class="form-group">
+        <label>Kebersihan ✓</label>
+        <div class="checkbox-group" id="drv-kebersihan-list"></div>
+      </div>
+      <div class="form-group">
+        <label>Fungsi Keselamatan ✓</label>
+        <div class="checkbox-group" id="drv-keselamatan-list"></div>
+      </div>
+      <div class="form-group">
+        <label>Kelengkapan Kendaraan ✓</label>
+        <div class="checkbox-group" id="drv-kelengkapan-list"></div>
+      </div>
+      <div class="form-group">
+        <label>Kelengkapan Administrasi ✓</label>
+        <div class="checkbox-group" id="drv-administrasi-list"></div>
+      </div>
+      <hr class="divider">
+      <span class="divider-label">Odometer & Servis</span>
+      <div class="form-group">
+        <label>Odometer (KM)</label>
+        <input type="number" id="drv-odometer" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Jadwal KM Servis Berikutnya</label>
+        <input type="number" id="drv-km-servis" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Keterangan Servis</label>
+        <input type="text" id="drv-ket-servis" placeholder="Contoh: Ganti oli 5.000 KM lagi">
+      </div>
+      <hr class="divider">
+      <span class="divider-label">Pajak</span>
+      <div class="form-group">
+        <label>Tanggal Jatuh Tempo Pajak</label>
+        <input type="date" id="drv-pajak-tanggal">
+      </div>
+      <div class="form-group">
+        <label>Jenis Pajak</label>
+        <input type="text" id="drv-jenis-pajak" placeholder="Contoh: STNK">
+      </div>
+      <div class="form-group">
+        <label>Keterangan Pajak</label>
+        <input type="text" id="drv-ket-pajak" placeholder="Keterangan...">
+      </div>
+      <div class="form-group">
+        <label>Foto Kondisi Kendaraan</label>
+        <input type="file" id="drv-foto-kondisi" accept="image/*" capture="environment">
+      </div>
+    </div>
+
+    <!-- Follow Up -->
+    <hr class="divider">
+    <span class="divider-label">Follow Up</span>
+    <div class="form-group">
+      <label>Perlu Follow Up?</label>
+      <div class="enum-group">
+        <button class="enum-btn active" id="drv-fu-n" onclick="drvSetFU('N')">Tidak</button>
+        <button class="enum-btn" id="drv-fu-y" onclick="drvSetFU('Y')">Ya</button>
+      </div>
+    </div>
+    <div id="drv-fu-fields" class="hidden">
+      <div class="form-group">
+        <label>Detail Laporan</label>
+        <textarea id="drv-detail-laporan" placeholder="Tulis laporan..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Foto Follow Up</label>
+        <input type="file" id="drv-foto-fu" accept="image/*" capture="environment">
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="submitDriver()">Simpan Kegiatan</button>
+  </div>
+</div>
+
+<!-- ══ SECURITY FORM ══════════════════════════════════════════ -->
+<div class="screen" id="screen-security">
+  <div class="top-bar">
+    <button class="back-btn" onclick="go('screen-home')">‹</button>
+    <div>
+      <h1>Form Security</h1>
+      <span class="subtitle">Catat kegiatan keamanan</span>
+    </div>
+  </div>
+  <div class="form-body">
+
+    <div class="form-group">
+      <label>Tanggal</label>
+      <input type="date" id="sec-tanggal">
+    </div>
+    <div class="form-group">
+      <label>Nama Pegawai <span class="req">*</span></label>
+      <select id="sec-pegawai">
+        <option value="">— Pilih nama —</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Kantor</label>
+      <div class="enum-group">
+        <button class="enum-btn" onclick="secSetKantor('Kantor Kalasan',this)">Kalasan</button>
+        <button class="enum-btn" onclick="secSetKantor('Kantor Veteran',this)">Veteran</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Jenis Kegiatan <span class="req">*</span></label>
+      <select id="sec-kegiatan" onchange="secOnKegiatan()">
+        <option value="">— Pilih kegiatan —</option>
+        <option>Piket Keamanan</option>
+        <option>Pencatatan Kendaraan</option>
+        <option>Surat dan Paket</option>
+        <option>Pengecekan Genset</option>
+      </select>
+    </div>
+
+    <!-- ─ Piket ─ -->
+    <div id="sec-piket-fields" class="hidden">
+      <span class="divider-label">Detail Piket</span>
+      <div class="form-group">
+        <label>Shift</label>
+        <div class="enum-group" id="sec-shift-group">
+          <button class="enum-btn" onclick="enumSelect(this,'sec-shift')">Pagi</button>
+          <button class="enum-btn" onclick="enumSelect(this,'sec-shift')">Siang</button>
+          <button class="enum-btn" onclick="enumSelect(this,'sec-shift')">Malam</button>
+          <button class="enum-btn" onclick="secShiftLainnya(this)">Lainnya</button>
+        </div>
+        <input type="hidden" id="sec-shift">
+      </div>
+      <div class="form-group hidden" id="sec-shift-lainnya-wrap">
+        <label>Shift Lainnya</label>
+        <input type="text" id="sec-shift-lainnya" placeholder="Tulis shift...">
+      </div>
+      <div class="form-group">
+        <label>Kegiatan Piket ✓</label>
+        <div class="checkbox-group" id="sec-piket-list"></div>
+      </div>
+      <div class="form-group">
+        <label>Keterangan</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="enumSelect(this,'sec-ket-piket')">Baik dan Lengkap</button>
+          <button class="enum-btn" onclick="enumSelect(this,'sec-ket-piket')">Aman</button>
+          <button class="enum-btn" onclick="enumSelect(this,'sec-ket-piket')">Ada Kejadian</button>
+        </div>
+        <input type="hidden" id="sec-ket-piket">
+      </div>
+      <div class="form-group">
+        <label>Kejadian Khusus?</label>
+        <div class="enum-group">
+          <button class="enum-btn active" id="sec-kej-n" onclick="secSetKejadian('N')">Tidak</button>
+          <button class="enum-btn" id="sec-kej-y" onclick="secSetKejadian('Y')">Ya</button>
+        </div>
+      </div>
+      <div class="form-group hidden" id="sec-kejadian-wrap">
+        <label>Detail Kejadian</label>
+        <textarea id="sec-detail-kejadian" placeholder="Tulis detail kejadian..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Foto <span class="req">*</span></label>
+        <input type="file" id="sec-foto-piket" accept="image/*" capture="environment">
+      </div>
+    </div>
+
+    <!-- ─ Pencatatan Kendaraan ─ -->
+    <div id="sec-kendaraan-fields" class="hidden">
+      <span class="divider-label">Detail Kendaraan</span>
+      <div class="form-group">
+        <label>Status Kendaraan</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="secSetStatusKend('Masuk',this)">Masuk</button>
+          <button class="enum-btn" onclick="secSetStatusKend('Keluar',this)">Keluar</button>
+        </div>
+      </div>
+      <div class="form-group hidden" id="sec-jam-masuk-wrap">
+        <label>Jam Masuk</label>
+        <input type="time" id="sec-jam-masuk">
+      </div>
+      <div class="form-group hidden" id="sec-jam-keluar-wrap">
+        <label>Jam Keluar</label>
+        <input type="time" id="sec-jam-keluar">
+      </div>
+      <div class="form-group">
+        <label>Tipe Kendaraan</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="secSetTipeKend('Dinas',this)">Dinas</button>
+          <button class="enum-btn" onclick="secSetTipeKend('Pribadi',this)">Pribadi</button>
+          <button class="enum-btn" onclick="secSetTipeKend('Tamu',this)">Tamu</button>
+        </div>
+      </div>
+      <div class="form-group hidden" id="sec-kend-dinas-wrap">
+        <label>Kendaraan Dinas</label>
+        <select id="sec-kendaraan-dinas"><option value="">— Pilih —</option></select>
+      </div>
+      <div class="form-group hidden" id="sec-driver-wrap">
+        <label>Driver</label>
+        <select id="sec-driver"><option value="">— Pilih driver —</option></select>
+      </div>
+      <div class="form-group hidden" id="sec-kend-manual-wrap">
+        <label>Jenis Kendaraan</label>
+        <input type="text" id="sec-jenis-kend-manual" placeholder="Contoh: Honda Vario">
+        <div style="margin-top:8px">
+          <input type="text" id="sec-plat-nomor" placeholder="Plat nomor, contoh: AB 1234 XY">
+        </div>
+      </div>
+      <div class="form-group hidden" id="sec-sopir-manual-wrap">
+        <label>Nama Sopir</label>
+        <input type="text" id="sec-nama-sopir" placeholder="Nama sopir/pengemudi">
+      </div>
+      <div class="form-group">
+        <label>Keperluan</label>
+        <select id="sec-keperluan"><option value="">— Pilih —</option></select>
+      </div>
+      <div class="form-group">
+        <label>Keterangan</label>
+        <input type="text" id="sec-ket-kendaraan" placeholder="Keterangan tambahan...">
+      </div>
+    </div>
+
+    <!-- ─ Surat & Paket ─ -->
+    <div id="sec-surat-fields" class="hidden">
+      <span class="divider-label">Detail Surat & Paket</span>
+      <div class="form-group">
+        <label>Jenis</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="enumSelect(this,'sec-jenis-paket')">Paket</button>
+          <button class="enum-btn" onclick="enumSelect(this,'sec-jenis-paket')">Surat</button>
+        </div>
+        <input type="hidden" id="sec-jenis-paket">
+      </div>
+      <div class="form-group">
+        <label>Pengirim</label>
+        <input type="text" id="sec-pengirim" placeholder="Nama pengirim">
+      </div>
+      <div class="form-group">
+        <label>Penerima</label>
+        <input type="text" id="sec-penerima" placeholder="Nama penerima">
+      </div>
+      <div class="form-group">
+        <label>Jumlah</label>
+        <input type="number" id="sec-jumlah-paket" min="1" value="1">
+      </div>
+      <div class="form-group">
+        <label>Keterangan</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="enumSelect(this,'sec-ket-paket')">Pribadi</button>
+          <button class="enum-btn" onclick="enumSelect(this,'sec-ket-paket')">Dinas</button>
+        </div>
+        <input type="hidden" id="sec-ket-paket">
+      </div>
+      <div class="form-group">
+        <label>Status Pengiriman</label>
+        <div class="enum-group">
+          <button class="enum-btn active" id="sec-status-belum" onclick="secSetStatus('Belum')">Belum Diserahkan</button>
+          <button class="enum-btn" id="sec-status-sudah" onclick="secSetStatus('Sudah Diserahkan')">Sudah Diserahkan</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Foto (opsional)</label>
+        <input type="file" id="sec-foto-surat" accept="image/*" capture="environment">
+      </div>
+    </div>
+
+    <!-- ─ Genset ─ -->
+    <div id="sec-genset-fields" class="hidden">
+      <span class="divider-label">Kondisi Genset</span>
+      <div class="form-group">
+        <label>Kondisi Accu</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="secSetKondisi('accu','Baik',this)">Baik</button>
+          <button class="enum-btn" onclick="secSetKondisi('accu','Tidak Baik',this)">Tidak Baik</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Kondisi Radiator</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="secSetKondisi('radiator','Baik',this)">Baik</button>
+          <button class="enum-btn" onclick="secSetKondisi('radiator','Tidak Baik',this)">Tidak Baik</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Stok BBM Genset</label>
+        <input type="text" id="sec-stok-bbm" placeholder="Contoh: 75% / Penuh / Hampir habis">
+      </div>
+      <div class="form-group hidden" id="sec-foto-genset-wrap">
+        <label>Foto Kondisi Genset <span class="req">*</span></label>
+        <input type="file" id="sec-foto-genset" accept="image/*" capture="environment">
+      </div>
+    </div>
+
+    <!-- Follow Up -->
+    <hr class="divider">
+    <span class="divider-label">Follow Up</span>
+    <div class="form-group">
+      <label>Perlu Follow Up?</label>
+      <div class="enum-group">
+        <button class="enum-btn active" id="sec-fu-n" onclick="secSetFU('N')">Tidak</button>
+        <button class="enum-btn" id="sec-fu-y" onclick="secSetFU('Y')">Ya</button>
+      </div>
+    </div>
+    <div id="sec-fu-fields" class="hidden">
+      <div class="form-group">
+        <label>Detail Laporan</label>
+        <textarea id="sec-detail-laporan" placeholder="Tulis laporan..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Foto Follow Up</label>
+        <input type="file" id="sec-foto-fu" accept="image/*" capture="environment">
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="submitSecurity()">Simpan Kegiatan</button>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ═════════════════════════════════════════════ -->
+<div class="screen" id="screen-dashboard">
+  <div class="top-bar">
+    <button class="back-btn" onclick="go('screen-home')">‹</button>
+    <div>
+      <h1>Dashboard</h1>
+      <span class="subtitle">Rekap kegiatan</span>
+    </div>
+  </div>
+  <div style="padding-top:16px">
+    <div class="stat-row">
+      <div class="stat-box"><div class="num" id="dash-total">—</div><div class="lbl">Total Log</div></div>
+      <div class="stat-box"><div class="num" id="dash-fu" style="color:var(--red)">—</div><div class="lbl">Follow Up</div></div>
+      <div class="stat-box"><div class="num" id="dash-today">—</div><div class="lbl">Hari Ini</div></div>
+    </div>
+    <div class="filter-tabs">
+      <button class="filter-tab active" onclick="dashFilter('semua',this)">Semua</button>
+      <button class="filter-tab" onclick="dashFilter('security',this)">Security</button>
+      <button class="filter-tab" onclick="dashFilter('driver',this)">Driver</button>
+      <button class="filter-tab" onclick="dashFilter('cs',this)">CS</button>
+      <button class="filter-tab" onclick="dashFilter('followup',this)">Follow Up</button>
+    </div>
+    <div class="log-list" id="dash-list">
+      <p style="text-align:center;color:var(--text3);padding:40px 0;font-size:14px">Memuat data...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SUCCESS ════════════════════════════════════════════════ -->
+<div class="screen" id="screen-success">
+  <div class="success-wrap">
+    <div class="check">✅</div>
+    <h2>Tersimpan!</h2>
+    <p id="success-msg">Data berhasil dicatat.</p>
+    <button class="btn-home" onclick="go('screen-home')">← Kembali ke Beranda</button>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- Loading -->
+<div class="loading-overlay hidden" id="loading">
+  <div class="spinner"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// CONFIG — ganti URL ini setelah deploy Apps Script
+// ══════════════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'GANTI_DENGAN_URL_APPS_SCRIPT_KAMU';
+
+// ── State ─────────────────────────────────────────────────────
+let masterData = {};
+let csState = { kegiatan: '', kantor: '', lokasi: '', fu: 'N' };
+let secState = { kantor: '', jenisKeg: '', statusKend: '', tipeKend: '', kondisiAccu: '', kondisiRadiator: '', fu: 'N', kejadian: 'N', statusSurat: 'Belum' };
+let drvState = { fu: 'N', tipeKeg: '' };
+let dashData = [];
+
+// ── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.querySelectorAll('input[type=date]').forEach(el => el.value = today);
+
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  document.getElementById('home-date').textContent =
+    new Date().toLocaleDateString('id-ID', opts);
+
+  loadMasterData();
+
+  // Checklist kondisi kendaraan
+  renderCheckboxList('drv-kebersihan-list', [
+    'Dashboard','Kursi / Jok','Plafon','Karpet / Alas','Kaca depan','Kaca belakang',
+    'Kaca samping','Eksterior bodi','Velg & ban','Bagasi','Spion'
+  ]);
+  renderCheckboxList('drv-keselamatan-list', [
+    'Lampu depan','Lampu belakang','Stop lamp','Sein kiri & kanan',
+    'Klakson','Rem tangan','Rem kaki','Sabuk pengaman','Wiper','Kunci pintu'
+  ]);
+  renderCheckboxList('drv-kelengkapan-list', [
+    'Ban cadangan','Dongkrak','Kunci ban','Segitiga pengaman',
+    'APAR (pemadam)','P3K','Payung','Senter','Tali derek','Aki booster','Kabel jumper'
+  ]);
+  renderCheckboxList('drv-administrasi-list', [
+    'STNK','KIR','Asuransi','Kartu BBM','Buku servis','SIM driver'
+  ]);
+});
+
+// ── Load Master Data ─────────────────────────────────────────
+async function loadMasterData() {
+  try {
+    if (APPS_SCRIPT_URL === 'GANTI_DENGAN_URL_APPS_SCRIPT_KAMU') {
+      loadDemoData();
+      return;
+    }
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getMasterData');
+    masterData = await res.json();
+    populateDropdowns();
+  } catch (e) {
+    loadDemoData();
+  }
+}
+
+function loadDemoData() {
+  masterData = {
+    pegawai: [
+      {PegawaiID:'PG001',Nama:'Agus Indarto',Role:'Security'},
+      {PegawaiID:'PG002',Nama:'Guridno',Role:'Security'},
+      {PegawaiID:'PG003',Nama:'Harsana Utama',Role:'Security'},
+      {PegawaiID:'PG004',Nama:'Sugeng Dumadi',Role:'CS'},
+      {PegawaiID:'PG005',Nama:'Aan Rusmanto',Role:'Driver'},
+      {PegawaiID:'PG006',Nama:'Sulistyanto',Role:'Driver'},
+      {PegawaiID:'PG007',Nama:'Wahyudiawan',Role:'CS'},
+      {PegawaiID:'PG008',Nama:'Parjono',Role:'Security'},
+      {PegawaiID:'PG009',Nama:'Wawan Setyawan',Role:'CS'},
+      {PegawaiID:'PG010',Nama:'Wahyu Sigit Prabowo',Role:'Security'},
+      {PegawaiID:'PG011',Nama:'Hermawan',Role:'Security'},
+      {PegawaiID:'PG012',Nama:'Dani Ari Wibowo',Role:'CS'},
+      {PegawaiID:'PG013',Nama:'Bernadus Dwi Wahyudi',Role:'CS'},
+      {PegawaiID:'PG014',Nama:'Agus Mustofa',Role:'Driver'},
+      {PegawaiID:'PG015',Nama:'Ramidi',Role:'CS'},
+      {PegawaiID:'PG016',Nama:'Windu Wulandari',Role:'Security'},
+      {PegawaiID:'PG017',Nama:'Andi Wibowo',Role:'Security'},
+      {PegawaiID:'PG018',Nama:'Arif Wahyudi',Role:'Driver'},
+      {PegawaiID:'PG019',Nama:'Imam Alrofi',Role:'Security'},
+      {PegawaiID:'PG020',Nama:'Sonny Prasetya',Role:'Security'},
+      {PegawaiID:'PG021',Nama:'Muhammad Fais Al Roosyid',Role:'CS'},
+      {PegawaiID:'PG022',Nama:'Agung Mahadi Putra',Role:'Security'},
+      {PegawaiID:'PG023',Nama:'Fani Abdul Rozid',Role:'Security'},
+      {PegawaiID:'PG024',Nama:'Bagas Tri Pamungkas',Role:'CS'},
+    ],
+    jenisKegiatanCS: [
+      {KegiatanID:'KG004',NamaKegiatan:'Monitoring Kebersihan & Pembersihan Rutin'},
+      {KegiatanID:'KG005',NamaKegiatan:'Pembersihan Rutin Kamar Mandi'},
+      {KegiatanID:'KG006',NamaKegiatan:'Kegiatan Vakum'},
+      {KegiatanID:'KG007',NamaKegiatan:'Pemeliharaan Transportable Slave'},
+    ],
+    lokasi: [
+      {LokasiID:'LK001',Kantor:'Kalasan',NamaLokasi:'Halaman depan kantor',TipeLokasiKM:'',TipeLokasiVakum:'',TipeLokasiSlave:''},
+      {LokasiID:'LK002',Kantor:'Kalasan',NamaLokasi:'Pos satpam',TipeLokasiKM:'',TipeLokasiVakum:'',TipeLokasiSlave:''},
+      {LokasiID:'LK003',Kantor:'Kalasan',NamaLokasi:'Lobi kantor',TipeLokasiKM:'',TipeLokasiVakum:'',TipeLokasiSlave:''},
+      {LokasiID:'LK004',Kantor:'Kalasan',NamaLokasi:'Ruang monitoring',TipeLokasiKM:'',TipeLokasiVakum:'',TipeLokasiSlave:''},
+      {LokasiID:'LK005',Kantor:'Kalasan',NamaLokasi:'Kamar mandi kantor',TipeLokasiKM:'TRUE',TipeLokasiVakum:'',TipeLokasiSlave:''},
+      {LokasiID:'LK006',Kantor:'Kalasan',NamaLokasi:'Gudang',TipeLokasiKM:'',TipeLokasiVakum:'',TipeLokasiSlave:''},
+      {LokasiID:'LK007',Kantor:'Kalasan',NamaLokasi:'Dapur',TipeLokasiKM:'',TipeLokasiVakum:'',TipeLokasiSlave:''},
+      {LokasiID:'LK008',Kantor:'Kalasan',NamaLokasi:'Garasi',TipeLokasiKM:'',TipeLokasiVakum:'',TipeLokasiSlave:''},
+      {LokasiID:'LK009',Kantor:'Kalasan',NamaLokasi:'Halaman belakang kantor'},
+      {LokasiID:'LK010',Kantor:'Kalasan',NamaLokasi:'Mushola'},
+      {LokasiID:'LK011',Kantor:'Kalasan',NamaLokasi:'Rumah Dinas Kabalmon'},
+      {LokasiID:'LK012',Kantor:'Kalasan',NamaLokasi:'Rumah mess'},
+      {LokasiID:'LK013',Kantor:'Kalasan',NamaLokasi:'Rumahan mess'},
+      {LokasiID:'LK014',Kantor:'Kalasan',NamaLokasi:'Kamar mandi mess',TipeLokasiKM:'TRUE'},
+      {LokasiID:'LV001',Kantor:'Veteran',NamaLokasi:'L2 - Ruang Kabalmon',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LV002',Kantor:'Veteran',NamaLokasi:'L2 - Lobi'},
+      {LokasiID:'LV003',Kantor:'Veteran',NamaLokasi:'L2 - Ruang Penyidik'},
+      {LokasiID:'LV004',Kantor:'Veteran',NamaLokasi:'L2 - Ruang Rapat',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LV005',Kantor:'Veteran',NamaLokasi:'L2 - Ruang Monitoring',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LV006',Kantor:'Veteran',NamaLokasi:'L2 - Ruang Staf'},
+      {LokasiID:'LV007',Kantor:'Veteran',NamaLokasi:'L2 - Ruang Kasubbag',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LV008',Kantor:'Veteran',NamaLokasi:'L2 - Ruang Bendahara',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LV009',Kantor:'Veteran',NamaLokasi:'L2 - Mushola',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LV010',Kantor:'Veteran',NamaLokasi:'L2 - Kamar Mandi',TipeLokasiKM:'TRUE'},
+      {LokasiID:'LV011',Kantor:'Veteran',NamaLokasi:'L1 - Kamar Mandi',TipeLokasiKM:'TRUE'},
+      {LokasiID:'LV012',Kantor:'Veteran',NamaLokasi:'L1 - Gudang'},
+      {LokasiID:'LV013',Kantor:'Veteran',NamaLokasi:'L1 - Lobi dan Ruang Layanan'},
+      {LokasiID:'LV014',Kantor:'Veteran',NamaLokasi:'L1 - Ruang SPML',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LV015',Kantor:'Veteran',NamaLokasi:'L1 - Ruang Penertiban dan Taman'},
+      {LokasiID:'LV016',Kantor:'Veteran',NamaLokasi:'L1 - Garasi'},
+      {LokasiID:'LV017',Kantor:'Veteran',NamaLokasi:'L1 - Halaman Depan'},
+      {LokasiID:'LV018',Kantor:'Veteran',NamaLokasi:'L1 - Dapur'},
+      {LokasiID:'LV019',Kantor:'Veteran',NamaLokasi:'L1 - Mushola',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LV020',Kantor:'Veteran',NamaLokasi:'L2 - Ruang Podcast',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LV021',Kantor:'Veteran',NamaLokasi:'L1 - Ruang Staf Montib',TipeLokasiVakum:'TRUE'},
+      {LokasiID:'LG001',Kantor:'Girijati',NamaLokasi:'Ruang Genset',TipeLokasiSlave:'TRUE'},
+      {LokasiID:'LG002',Kantor:'Girijati',NamaLokasi:'Ruang Shelter',TipeLokasiSlave:'TRUE'},
+      {LokasiID:'LM001',Kantor:'Girimulyo',NamaLokasi:'Ruang Genset',TipeLokasiSlave:'TRUE'},
+      {LokasiID:'LM002',Kantor:'Girimulyo',NamaLokasi:'Ruang Shelter',TipeLokasiSlave:'TRUE'},
+    ],
+    detailKegiatan: [
+      {DetailKegiatanID:'DK001',LokasiID:'LK001',NamaDetailKegiatan:'Menyapu halaman depan kantor'},
+      {DetailKegiatanID:'DK002',LokasiID:'LK001',NamaDetailKegiatan:'Membuang sampah'},
+      {DetailKegiatanID:'DK003',LokasiID:'LK001',NamaDetailKegiatan:'Menyiram tanaman'},
+      {DetailKegiatanID:'DK004',LokasiID:'LK001',NamaDetailKegiatan:'Memotong rumput'},
+      {DetailKegiatanID:'DK005',LokasiID:'LK002',NamaDetailKegiatan:'Membersihkan meja dan kursi'},
+      {DetailKegiatanID:'DK006',LokasiID:'LK002',NamaDetailKegiatan:'Menyapu dan mengepel lantai'},
+      {DetailKegiatanID:'DK007',LokasiID:'LK002',NamaDetailKegiatan:'Membersihkan kaca jendela'},
+      {DetailKegiatanID:'DK016',LokasiID:'LK005',NamaDetailKegiatan:'Membersihkan lantai'},
+      {DetailKegiatanID:'DK017',LokasiID:'LK005',NamaDetailKegiatan:'Membersihkan wastafel'},
+      {DetailKegiatanID:'DK018',LokasiID:'LK005',NamaDetailKegiatan:'Mengisi persediaan tisu'},
+      {DetailKegiatanID:'DK019',LokasiID:'LK005',NamaDetailKegiatan:'Membuang sampah'},
+      {DetailKegiatanID:'DK090',LokasiID:'LK005',NamaDetailKegiatan:'Membersihkan closet'},
+      {DetailKegiatanID:'DK030',LokasiID:'LV001',NamaDetailKegiatan:'Membersihkan meja dan kursi'},
+      {DetailKegiatanID:'DK031',LokasiID:'LV001',NamaDetailKegiatan:'Memvacum karpet'},
+      {DetailKegiatanID:'DK032',LokasiID:'LV001',NamaDetailKegiatan:'Membersihkan kamar mandi'},
+      {DetailKegiatanID:'DK033',LokasiID:'LV001',NamaDetailKegiatan:'Menyapu dan mengepel lantai'},
+      {DetailKegiatanID:'DK058',LokasiID:'LV010',NamaDetailKegiatan:'Membersihkan lantai'},
+      {DetailKegiatanID:'DK059',LokasiID:'LV010',NamaDetailKegiatan:'Mengisi persediaan tisu'},
+      {DetailKegiatanID:'DK060',LokasiID:'LV010',NamaDetailKegiatan:'Membuang sampah'},
+      {DetailKegiatanID:'DK091',LokasiID:'LV010',NamaDetailKegiatan:'Membersihkan wastafel'},
+      {DetailKegiatanID:'DK092',LokasiID:'LV010',NamaDetailKegiatan:'Membersihkan closet'},
+      {DetailKegiatanID:'DK096',LokasiID:'LV011',NamaDetailKegiatan:'Membersihkan lantai'},
+      {DetailKegiatanID:'DK097',LokasiID:'LV011',NamaDetailKegiatan:'Membersihkan wastafel'},
+      {DetailKegiatanID:'DK098',LokasiID:'LV011',NamaDetailKegiatan:'Membuang sampah'},
+      {DetailKegiatanID:'DK099',LokasiID:'LV011',NamaDetailKegiatan:'Mengganti tisu'},
+      {DetailKegiatanID:'DK100',LokasiID:'LV011',NamaDetailKegiatan:'Membersihkan closet'},
+    ],
+    kendaraanDinas: [
+      {KendaraanID:'KD001',NamaKendaraan:'Toyota Hiace',Plat:'AB 1234 XX'},
+      {KendaraanID:'KD002',NamaKendaraan:'Reborn Grey',Plat:'AB 1059 IA'},
+      {KendaraanID:'KD003',NamaKendaraan:'Zenix',Plat:'AB 1135 IA'},
+      {KendaraanID:'KD004',NamaKendaraan:'Hilux',Plat:'AB 8520 AI'},
+      {KendaraanID:'KD005',NamaKendaraan:'Venturer',Plat:'AB 1209 ZA'},
+    ],
+    keperluanDriver: [
+      {KepID:'KP001',NamaKeperluan:'Pengantaran Staff'},
+      {KepID:'KP002',NamaKeperluan:'Pelayanan KTU'},
+      {KepID:'KP003',NamaKeperluan:'Pelayanan Wakil Menteri'},
+      {KepID:'KP004',NamaKeperluan:'Pelayanan Kabalmon'},
+      {KepID:'KP005',NamaKeperluan:'Kantor Kalasan'},
+      {KepID:'KP006',NamaKeperluan:'Proyek Perawatan Rudin'},
+      {KepID:'KP007',NamaKeperluan:'Operasional Perkantoran'},
+      {KepID:'KP008',NamaKeperluan:'Lainnya'},
+    ],
+    uraianKegiatan: [
+      {UraianID:'UK001',TahapKegiatan:'Persiapan Kendaraan',UraianKegiatan:'Mengecek kondisi kendaraan (oli, air radiator, bahan bakar, ban, lampu, inverter, surat-surat)'},
+      {UraianID:'UK002',TahapKegiatan:'Persiapan Kendaraan',UraianKegiatan:'Membersihkan kendaraan sebelum digunakan'},
+      {UraianID:'UK003',TahapKegiatan:'Selama bertugas',UraianKegiatan:'Mengemudi dengan aman dan tertib'},
+      {UraianID:'UK004',TahapKegiatan:'Selama bertugas',UraianKegiatan:'Mengantar pegawai dinas ke tujuan'},
+      {UraianID:'UK005',TahapKegiatan:'Selama bertugas',UraianKegiatan:'Menjaga kebersihan dan keamanan kendaraan'},
+      {UraianID:'UK006',TahapKegiatan:'Setelah bertugas',UraianKegiatan:'Memeriksa ulang kondisi kendaraan setelah digunakan'},
+      {UraianID:'UK007',TahapKegiatan:'Setelah bertugas',UraianKegiatan:'Melapor jika ada kendala atau kerusakan'},
+      {UraianID:'UK008',TahapKegiatan:'Setelah bertugas',UraianKegiatan:'Mengisi buku log kendaraan / laporan'},
+    ],
+    kegiatanPiket: [
+      {KegiatanPiketID:'KP002',NamaKegiatanPiket:'Serah Terima Tugas Jaga',Kantor:'Kantor Kalasan, Kantor Veteran'},
+      {KegiatanPiketID:'KP003',NamaKegiatanPiket:'Monitoring CCTV',Kantor:'Kantor Kalasan, Kantor Veteran'},
+      {KegiatanPiketID:'KP004',NamaKegiatanPiket:'Pencatatan buku tamu',Kantor:'Kantor Kalasan, Kantor Veteran'},
+      {KegiatanPiketID:'KP005',NamaKegiatanPiket:'Lainnya',Kantor:'Kantor Kalasan, Kantor Veteran'},
+      {KegiatanPiketID:'KP006',NamaKegiatanPiket:'Kontrol Titik Barang (Gudang)',Kantor:'Kantor Kalasan'},
+      {KegiatanPiketID:'KP007',NamaKegiatanPiket:'Kontrol Titik Utara (Sukun)',Kantor:'Kantor Kalasan'},
+      {KegiatanPiketID:'KP008',NamaKegiatanPiket:'Kontrol Kolam',Kantor:'Kantor Kalasan'},
+      {KegiatanPiketID:'KP009',NamaKegiatanPiket:'Kontrol Rudin I',Kantor:'Kantor Kalasan'},
+      {KegiatanPiketID:'KP010',NamaKegiatanPiket:'Kontrol Area Pantry',Kantor:'Kantor Veteran'},
+      {KegiatanPiketID:'KP011',NamaKegiatanPiket:'Kontrol Area Kamar Mandi Atas',Kantor:'Kantor Veteran'},
+      {KegiatanPiketID:'KP012',NamaKegiatanPiket:'Kontrol Area R Bendahara',Kantor:'Kantor Veteran'},
+      {KegiatanPiketID:'KP013',NamaKegiatanPiket:'Kontrol Area R Kabalmon',Kantor:'Kantor Veteran'},
+      {KegiatanPiketID:'KP014',NamaKegiatanPiket:'Kontrol Area Pintu Belakang',Kantor:'Kantor Veteran'},
+      {KegiatanPiketID:'KP015',NamaKegiatanPiket:'Kontrol Parkiran',Kantor:'Kantor Veteran'},
+    ],
+  };
+  populateDropdowns();
+}
+
+function populateDropdowns() {
+  // CS Pegawai
+  fillSelect('cs-pegawai', masterData.pegawai.filter(p=>p.Role==='CS'), 'PegawaiID', 'Nama');
+  // CS Kegiatan
+  fillSelect('cs-kegiatan', masterData.jenisKegiatanCS, 'KegiatanID', 'NamaKegiatan');
+  // Driver Pegawai
+  fillSelect('drv-pegawai', masterData.pegawai.filter(p=>p.Role==='Driver'), 'PegawaiID', 'Nama');
+  // Driver Kendaraan
+  const kend = masterData.kendaraanDinas;
+  ['drv-bbm-kendaraan','drv-rekap-kendaraan','drv-kondisi-kendaraan','sec-kendaraan-dinas'].forEach(id => {
+    fillSelect(id, kend, 'KendaraanID', p=>`${p.NamaKendaraan} (${p.Plat})`);
+  });
+  // Driver Keperluan BBM
+  fillSelect('drv-kegiatan-bbm', masterData.keperluanDriver, 'KepID', 'NamaKeperluan');
+  // Keperluan Security
+  fillSelect('sec-keperluan', masterData.keperluanDriver, 'KepID', 'NamaKeperluan');
+  // Security Pegawai
+  fillSelect('sec-pegawai', masterData.pegawai.filter(p=>p.Role==='Security'), 'PegawaiID', 'Nama');
+  // Security Driver dropdown
+  fillSelect('sec-driver', masterData.pegawai.filter(p=>p.Role==='Driver'), 'PegawaiID', 'Nama');
+}
+
+function fillSelect(id, items, valKey, labelFn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const prev = el.value;
+  el.innerHTML = '<option value="">— Pilih —</option>';
+  items.forEach(item => {
+    const opt = document.createElement('option');
+    opt.value = item[valKey];
+    opt.textContent = typeof labelFn === 'function' ? labelFn(item) : item[labelFn];
+    el.appendChild(opt);
+  });
+  if (prev) el.value = prev;
+}
+
+// ── Screen Navigation ─────────────────────────────────────────
+function go(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  window.scrollTo(0, 0);
+  if (screenId === 'screen-dashboard') loadDashboard();
+}
+
+// ── Utility ───────────────────────────────────────────────────
+function show(id)  { document.getElementById(id)?.classList.remove('hidden'); }
+function hide(id)  { document.getElementById(id)?.classList.add('hidden'); }
+function val(id)   { return document.getElementById(id)?.value || ''; }
+
+function enumSelect(btn, hiddenId) {
+  btn.closest('.enum-group').querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (hiddenId) document.getElementById(hiddenId).value = btn.textContent.trim();
+}
+
+function renderCheckboxList(containerId, items) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '';
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'checkbox-item';
+    div.innerHTML = `<input type="checkbox" value="${item}"><span>${item}</span>`;
+    div.onclick = () => {
+      const cb = div.querySelector('input');
+      cb.checked = !cb.checked;
+      div.classList.toggle('checked', cb.checked);
+    };
+    el.appendChild(div);
+  });
+}
+
+function getChecked(containerId) {
+  return [...document.querySelectorAll(`#${containerId} input[type=checkbox]:checked`)]
+    .map(cb => cb.value).join(', ');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function setLoading(on) {
+  document.getElementById('loading').classList.toggle('hidden', !on);
+}
+
+// ── CS Logic ──────────────────────────────────────────────────
+function csOnKegiatan() {
+  csState.kegiatan = val('cs-kegiatan');
+  csState.kantor = '';
+  csState.lokasi = '';
+  document.querySelectorAll('#cs-kantor-wrap .enum-btn').forEach(b => b.classList.remove('active'));
+  if (csState.kegiatan) { show('cs-kantor-wrap'); } else { hide('cs-kantor-wrap'); }
+  hide('cs-lokasi-wrap');
+  hide('cs-detail-wrap');
+  document.getElementById('cs-lokasi').innerHTML = '<option value="">— Pilih lokasi —</option>';
+  document.getElementById('cs-detail-list').innerHTML = '';
+}
+
+function csSetKantor(kantor, btn) {
+  csState.kantor = kantor;
+  document.querySelectorAll('#cs-kantor-wrap .enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  csUpdateLokasi();
+  show('cs-lokasi-wrap');
+  hide('cs-detail-wrap');
+  document.getElementById('cs-detail-list').innerHTML = '';
+}
+
+function csUpdateLokasi() {
+  const kg = val('cs-kegiatan');
+  const kgData = masterData.jenisKegiatanCS?.find(k => k.KegiatanID === kg || k.NamaKegiatan === kg);
+  const nama = kgData?.NamaKegiatan || '';
+  const isKM = nama.includes('Kamar Mandi');
+  const isVakum = nama.includes('Vakum');
+  const isSlave = nama.includes('Slave');
+
+  const filtered = (masterData.lokasi || []).filter(l => {
+    if (l.Kantor !== csState.kantor) return false;
+    if (isKM)    return l.TipeLokasiKM === 'TRUE';
+    if (isVakum) return l.TipeLokasiVakum === 'TRUE';
+    if (isSlave) return l.TipeLokasiSlave === 'TRUE';
+    return true;
+  });
+
+  const sel = document.getElementById('cs-lokasi');
+  sel.innerHTML = '<option value="">— Pilih lokasi —</option>';
+  filtered.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l.LokasiID;
+    opt.textContent = l.NamaLokasi;
+    sel.appendChild(opt);
+  });
+}
+
+function csOnLokasi() {
+  csState.lokasi = val('cs-lokasi');
+  if (!csState.lokasi) { hide('cs-detail-wrap'); return; }
+  const details = (masterData.detailKegiatan || []).filter(d => d.LokasiID === csState.lokasi);
+  const container = document.getElementById('cs-detail-list');
+  container.innerHTML = '';
+  details.forEach(d => {
+    const div = document.createElement('div');
+    div.className = 'checkbox-item';
+    div.innerHTML = `<input type="checkbox" value="${d.DetailKegiatanID}"><span>${d.NamaDetailKegiatan}</span>`;
+    div.onclick = () => {
+      const cb = div.querySelector('input');
+      cb.checked = !cb.checked;
+      div.classList.toggle('checked', cb.checked);
+    };
+    container.appendChild(div);
+  });
+  show('cs-detail-wrap');
+}
+
+function csSetFU(v) {
+  csState.fu = v;
+  document.getElementById('cs-fu-n').classList.toggle('active', v==='N');
+  document.getElementById('cs-fu-y').classList.toggle('active', v==='Y');
+  document.getElementById('cs-fu-fields').classList.toggle('hidden', v==='N');
+}
+
+function csOnJenisLaporan() {
+  const v = val('cs-jenis-laporan');
+  const isBarang = v === 'Laporan Permintaan Barang';
+  document.getElementById('cs-jumlah-wrap').classList.toggle('hidden', !isBarang);
+  const labels = {
+    'Laporan Kerusakan': 'Detail Kerusakan',
+    'Laporan Kehilangan': 'Detail Kehilangan',
+    'Laporan Permintaan Barang': 'Barang yang Diminta',
+    'Laporan Lainnya': 'Keterangan Laporan',
+  };
+  document.getElementById('cs-detail-laporan-label').textContent = labels[v] || 'Detail Laporan';
+}
+
+async function submitCS() {
+  if (!val('cs-pegawai')) { showToast('Pilih nama pegawai dulu'); return; }
+  if (!val('cs-kegiatan')) { showToast('Pilih jenis kegiatan'); return; }
+
+  const checkedDetails = [...document.querySelectorAll('#cs-detail-list input:checked')].map(cb => {
+    const dk = masterData.detailKegiatan.find(d => d.DetailKegiatanID === cb.value);
+    return dk?.NamaDetailKegiatan || cb.value;
+  }).join(', ');
+
+  const data = {
+    tanggal: val('cs-tanggal'),
+    namaPegawai: val('cs-pegawai'),
+    kegiatan: val('cs-kegiatan'),
+    kantor: csState.kantor,
+    lokasi: val('cs-lokasi'),
+    detailKegiatanDilakukan: checkedDetails,
+    catatan: val('cs-catatan'),
+    perluFollowUp: csState.fu,
+    prioritas: val('cs-prioritas'),
+    jenisLaporan: val('cs-jenis-laporan'),
+    detailLaporan: val('cs-detail-laporan'),
+    jumlahBarang: val('cs-jumlah'),
+  };
+
+  await doSubmit('submitCS', data, 'Data CS berhasil disimpan!');
+}
+
+// ── Driver Logic ──────────────────────────────────────────────
+function drvOnKegiatan() {
+  const v = val('drv-kegiatan');
+  hide('drv-bbm-fields'); hide('drv-rekap-fields'); hide('drv-kondisi-fields');
+  if (v === 'Penggunaan BBM Kendaraan Dinas') show('drv-bbm-fields');
+  else if (v === 'Rekapitulasi Penggunaan Kendaraan Dinas') show('drv-rekap-fields');
+  else if (v === 'Laporan Kondisi Kendaraan Dinas Roda Empat') show('drv-kondisi-fields');
+}
+
+function drvSetTipeKeg(v, btn) {
+  drvState.tipeKeg = v;
+  btn.closest('.enum-group').querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('drv-st-wrap').classList.toggle('hidden', v !== 'Tusi');
+  // Update keperluan label
+  if (val('drv-kegiatan-bbm') === 'Lainnya' || true) {
+    document.getElementById('drv-bbm-lainnya-wrap').classList.toggle('hidden', val('drv-kegiatan-bbm') !== 'Lainnya');
+  }
+}
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'drv-kegiatan-bbm') {
+    document.getElementById('drv-bbm-lainnya-wrap').classList.toggle('hidden', e.target.value !== 'Lainnya');
+  }
+});
+
+function drvOnTahap() {
+  const v = val('drv-tahap');
+  hide('drv-uraian-wrap'); hide('drv-odometer-awal-wrap'); hide('drv-odometer-akhir-wrap');
+  if (!v) return;
+  show('drv-uraian-wrap');
+  if (v === 'Persiapan Kendaraan') show('drv-odometer-awal-wrap');
+  if (v === 'Setelah bertugas') show('drv-odometer-akhir-wrap');
+
+  // Render uraian filtered
+  const filtered = (masterData.uraianKegiatan || []).filter(u => u.TahapKegiatan === v);
+  const container = document.getElementById('drv-uraian-list');
+  container.innerHTML = '';
+  filtered.forEach(u => {
+    const div = document.createElement('div');
+    div.className = 'checkbox-item';
+    div.innerHTML = `<input type="checkbox" value="${u.UraianID}"><span>${u.UraianKegiatan}</span>`;
+    div.onclick = () => { const cb = div.querySelector('input'); cb.checked = !cb.checked; div.classList.toggle('checked', cb.checked); };
+    container.appendChild(div);
+  });
+}
+
+function drvAddUraian() {
+  const input = document.getElementById('drv-uraian-custom');
+  const text = input.value.trim();
+  if (!text) return;
+  const container = document.getElementById('drv-uraian-list');
+  const div = document.createElement('div');
+  div.className = 'checkbox-item checked';
+  div.innerHTML = `<input type="checkbox" value="${text}" checked><span>${text}</span>`;
+  div.onclick = () => { const cb = div.querySelector('input'); cb.checked = !cb.checked; div.classList.toggle('checked', cb.checked); };
+  container.appendChild(div);
+  input.value = '';
+}
+
+function drvSetFU(v) {
+  drvState.fu = v;
+  document.getElementById('drv-fu-n').classList.toggle('active', v==='N');
+  document.getElementById('drv-fu-y').classList.toggle('active', v==='Y');
+  document.getElementById('drv-fu-fields').classList.toggle('hidden', v==='N');
+}
+
+async function submitDriver() {
+  if (!val('drv-pegawai')) { showToast('Pilih nama driver dulu'); return; }
+  if (!val('drv-kegiatan')) { showToast('Pilih jenis kegiatan'); return; }
+
+  const uraianChecked = [...document.querySelectorAll('#drv-uraian-list input:checked')].map(cb => cb.value).join(', ');
+
+  const data = {
+    tanggal: val('drv-tanggal'),
+    namaPegawai: val('drv-pegawai'),
+    kantor: val('drv-kantor'),
+    jenisKegiatan: val('drv-kegiatan'),
+    kendaraanDinas: val('drv-bbm-kendaraan') || val('drv-rekap-kendaraan') || val('drv-kondisi-kendaraan'),
+    tipeKegiatan: drvState.tipeKeg,
+    nomorST: val('drv-nomor-st'),
+    nominalBBM: val('drv-nominal-bbm'),
+    kegiatanBBM: val('drv-kegiatan-bbm'),
+    kegiatanBBMLainnya: val('drv-bbm-lainnya'),
+    hari: val('drv-hari'),
+    tahapKegiatan: val('drv-tahap'),
+    uraianKegiatan: uraianChecked,
+    odometerAwal: val('drv-odometer-awal'),
+    odometerAkhir: val('drv-odometer-akhir'),
+    itemKebersihan: getChecked('drv-kebersihan-list'),
+    itemFungsiKeselamatan: getChecked('drv-keselamatan-list'),
+    itemKelengkapanKendaraan: getChecked('drv-kelengkapan-list'),
+    itemKelengkapanAdministrasi: getChecked('drv-administrasi-list'),
+    odometerValue: val('drv-odometer'),
+    jadwalKMServis: val('drv-km-servis'),
+    keteranganServis: val('drv-ket-servis'),
+    tanggalJatuhTempoPajak: val('drv-pajak-tanggal'),
+    jenisPajak: val('drv-jenis-pajak'),
+    keteranganPajak: val('drv-ket-pajak'),
+    perluFollowUp: drvState.fu,
+    detailLaporan: val('drv-detail-laporan'),
+  };
+
+  await doSubmit('submitDriver', data, 'Data Driver berhasil disimpan!');
+}
+
+// ── Security Logic ────────────────────────────────────────────
+function secSetKantor(kantor, btn) {
+  secState.kantor = kantor;
+  document.querySelectorAll('#screen-security .enum-group').forEach(g => {
+    if (g.contains(btn)) {
+      g.querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  });
+  secUpdatePiketList();
+}
+
+function secOnKegiatan() {
+  secState.jenisKeg = val('sec-kegiatan');
+  hide('sec-piket-fields'); hide('sec-kendaraan-fields');
+  hide('sec-surat-fields'); hide('sec-genset-fields');
+  if (secState.jenisKeg === 'Piket Keamanan') { show('sec-piket-fields'); secUpdatePiketList(); }
+  else if (secState.jenisKeg === 'Pencatatan Kendaraan') show('sec-kendaraan-fields');
+  else if (secState.jenisKeg === 'Surat dan Paket') show('sec-surat-fields');
+  else if (secState.jenisKeg === 'Pengecekan Genset') show('sec-genset-fields');
+}
+
+function secUpdatePiketList() {
+  const container = document.getElementById('sec-piket-list');
+  if (!container) return;
+  const filtered = (masterData.kegiatanPiket || []).filter(k =>
+    !secState.kantor || k.Kantor.includes(secState.kantor)
+  );
+  container.innerHTML = '';
+  filtered.forEach(k => {
+    const div = document.createElement('div');
+    div.className = 'checkbox-item';
+    div.innerHTML = `<input type="checkbox" value="${k.KegiatanPiketID}"><span>${k.NamaKegiatanPiket}</span>`;
+    div.onclick = () => { const cb = div.querySelector('input'); cb.checked = !cb.checked; div.classList.toggle('checked', cb.checked); };
+    container.appendChild(div);
+  });
+}
+
+function secShiftLainnya(btn) {
+  enumSelect(btn, 'sec-shift');
+  document.getElementById('sec-shift').value = 'Lainnya';
+  show('sec-shift-lainnya-wrap');
+}
+
+function secSetKejadian(v) {
+  secState.kejadian = v;
+  document.getElementById('sec-kej-n').classList.toggle('active', v==='N');
+  document.getElementById('sec-kej-y').classList.toggle('active', v==='Y');
+  document.getElementById('sec-kejadian-wrap').classList.toggle('hidden', v==='N');
+}
+
+function secSetStatusKend(v, btn) {
+  secState.statusKend = v;
+  btn.closest('.enum-group').querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sec-jam-masuk-wrap').classList.toggle('hidden', v !== 'Masuk');
+  document.getElementById('sec-jam-keluar-wrap').classList.toggle('hidden', v !== 'Keluar');
+}
+
+function secSetTipeKend(v, btn) {
+  secState.tipeKend = v;
+  btn.closest('.enum-group').querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sec-kend-dinas-wrap').classList.toggle('hidden', v !== 'Dinas');
+  document.getElementById('sec-driver-wrap').classList.toggle('hidden', v !== 'Dinas');
+  document.getElementById('sec-kend-manual-wrap').classList.toggle('hidden', v === 'Dinas');
+  document.getElementById('sec-sopir-manual-wrap').classList.toggle('hidden', v === 'Dinas');
+}
+
+function secSetKondisi(type, v, btn) {
+  secState['kondisi' + type.charAt(0).toUpperCase() + type.slice(1)] = v;
+  btn.closest('.enum-group').querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const adaTidakBaik = secState.kondisiAccu === 'Tidak Baik' || secState.kondisiRadiator === 'Tidak Baik';
+  document.getElementById('sec-foto-genset-wrap').classList.toggle('hidden', !adaTidakBaik);
+}
+
+function secSetFU(v) {
+  secState.fu = v;
+  document.getElementById('sec-fu-n').classList.toggle('active', v==='N');
+  document.getElementById('sec-fu-y').classList.toggle('active', v==='Y');
+  document.getElementById('sec-fu-fields').classList.toggle('hidden', v==='N');
+}
+
+function secSetStatus(v) {
+  secState.statusSurat = v;
+  document.getElementById('sec-status-belum').classList.toggle('active', v==='Belum');
+  document.getElementById('sec-status-sudah').classList.toggle('active', v==='Sudah Diserahkan');
+}
+
+async function submitSecurity() {
+  if (!val('sec-pegawai')) { showToast('Pilih nama pegawai dulu'); return; }
+  if (!val('sec-kegiatan')) { showToast('Pilih jenis kegiatan'); return; }
+
+  const kegiatanPiketChecked = [...document.querySelectorAll('#sec-piket-list input:checked')].map(cb => {
+    const kp = masterData.kegiatanPiket?.find(k => k.KegiatanPiketID === cb.value);
+    return kp?.NamaKegiatanPiket || cb.value;
+  }).join(', ');
+
+  const data = {
+    tanggal: val('sec-tanggal'),
+    namaPegawai: val('sec-pegawai'),
+    kantor: secState.kantor,
+    jenisKegiatan: val('sec-kegiatan'),
+    shift: val('sec-shift'),
+    shiftLainnya: val('sec-shift-lainnya'),
+    kegiatanPiket: kegiatanPiketChecked,
+    keteranganPiket: val('sec-ket-piket'),
+    kejadianKhusus: secState.kejadian,
+    detailKejadian: val('sec-detail-kejadian'),
+    statusKendaraan: secState.statusKend,
+    jamMasuk: val('sec-jam-masuk'),
+    jamKeluar: val('sec-jam-keluar'),
+    tipeKendaraan: secState.tipeKend,
+    kendaraanDinas: val('sec-kendaraan-dinas'),
+    namaDriver: val('sec-driver'),
+    jenisKendaraanManual: val('sec-jenis-kend-manual'),
+    platNomor: val('sec-plat-nomor'),
+    namaSopirManual: val('sec-nama-sopir'),
+    keperluan: val('sec-keperluan'),
+    keteranganKendaraan: val('sec-ket-kendaraan'),
+    jenisPaket: val('sec-jenis-paket'),
+    pengirim: val('sec-pengirim'),
+    penerima: val('sec-penerima'),
+    jumlah: val('sec-jumlah-paket'),
+    keteranganPaket: val('sec-ket-paket'),
+    statusPengiriman: secState.statusSurat,
+    kondisiAccu: secState.kondisiAccu,
+    kondisiRadiator: secState.kondisiRadiator,
+    stokBBMGenset: val('sec-stok-bbm'),
+    perluFollowUp: secState.fu,
+    detailLaporan: val('sec-detail-laporan'),
+  };
+
+  await doSubmit('submitSecurity', data, 'Data Security berhasil disimpan!');
+}
+
+// ── Submit Handler ────────────────────────────────────────────
+async function doSubmit(action, data, successMsg) {
+  setLoading(true);
+  try {
+    if (APPS_SCRIPT_URL === 'GANTI_DENGAN_URL_APPS_SCRIPT_KAMU') {
+      await new Promise(r => setTimeout(r, 800));
+      setLoading(false);
+      document.getElementById('success-msg').textContent = successMsg + ' (Demo mode — belum terhubung ke Sheets)';
+      go('screen-success');
+      return;
+    }
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action, data }),
+    });
+    const result = await res.json();
+    setLoading(false);
+    if (result.success) {
+      document.getElementById('success-msg').textContent = successMsg;
+      go('screen-success');
+    } else {
+      showToast('Gagal menyimpan: ' + (result.error || 'Unknown error'));
+    }
+  } catch (e) {
+    setLoading(false);
+    showToast('Error koneksi. Coba lagi.');
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────
+async function loadDashboard() {
+  // Demo data untuk dashboard
+  dashData = [
+    { role:'Security', nama:'Guridno', kegiatan:'Piket Keamanan', waktu:'Hari ini, 09:53', fu: false },
+    { role:'Driver',   nama:'Agus Mustofa', kegiatan:'Rekapitulasi Penggunaan Kendaraan', waktu:'Hari ini, 08:28', fu: false },
+    { role:'CS',       nama:'Sugeng Dumadi', kegiatan:'Monitoring Kebersihan', waktu:'Hari ini, 08:00', fu: true },
+    { role:'Security', nama:'Harsana Utama', kegiatan:'Pencatatan Kendaraan', waktu:'Kemarin, 14:00', fu: false },
+    { role:'Driver',   nama:'Aan Rusmanto', kegiatan:'Penggunaan BBM', waktu:'Kemarin, 07:30', fu: false },
+  ];
+  document.getElementById('dash-total').textContent = dashData.length;
+  document.getElementById('dash-fu').textContent = dashData.filter(d=>d.fu).length;
+  document.getElementById('dash-today').textContent = dashData.filter(d=>d.waktu.startsWith('Hari ini')).length;
+  renderDash('semua');
+}
+
+function dashFilter(filter, btn) {
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderDash(filter);
+}
+
+function renderDash(filter) {
+  const icons = { Security:'🛡️', Driver:'🚗', CS:'🧹' };
+  const filtered = dashData.filter(d => {
+    if (filter === 'semua') return true;
+    if (filter === 'followup') return d.fu;
+    return d.role.toLowerCase() === filter;
+  });
+  const list = document.getElementById('dash-list');
+  if (!filtered.length) { list.innerHTML = '<p style="text-align:center;color:var(--text3);padding:40px 0;font-size:14px">Tidak ada data</p>'; return; }
+  list.innerHTML = filtered.map(d => `
+    <div class="log-item">
+      <div class="li-top">
+        <span class="li-name">${icons[d.role]||''} ${d.nama}</span>
+        <span class="badge ${d.fu ? 'badge-fu' : 'badge-ok'}">${d.fu ? 'Follow Up' : 'Selesai'}</span>
+      </div>
+      <div class="li-detail">${d.role} — ${d.kegiatan}</div>
+      <div class="li-time">${d.waktu}</div>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>
