@@ -892,7 +892,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 // ══════════════════════════════════════════════════════════════
 // CONFIG — ganti URL ini setelah deploy Apps Script
 // ══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'GANTI_DENGAN_URL_APPS_SCRIPT_KAMU';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTJQn7x8v-ez-kYjcvBhAulv-yqvxZLb3udous2E1gzotyTQ23uxJpKV3DzQF7_JM/exec';
 
 // ── State ─────────────────────────────────────────────────────
 let masterData = {};
@@ -933,7 +933,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Load Master Data ─────────────────────────────────────────
 async function loadMasterData() {
   try {
-    if (APPS_SCRIPT_URL === 'GANTI_DENGAN_URL_APPS_SCRIPT_KAMU') {
+    if (APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbwTJQn7x8v-ez-kYjcvBhAulv-yqvxZLb3udous2E1gzotyTQ23uxJpKV3DzQF7_JM/exec') {
       loadDemoData();
       return;
     }
@@ -1546,7 +1546,7 @@ async function submitSecurity() {
 async function doSubmit(action, data, successMsg) {
   setLoading(true);
   try {
-    if (APPS_SCRIPT_URL === 'GANTI_DENGAN_URL_APPS_SCRIPT_KAMU') {
+    if (APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbwTJQn7x8v-ez-kYjcvBhAulv-yqvxZLb3udous2E1gzotyTQ23uxJpKV3DzQF7_JM/exec') {
       await new Promise(r => setTimeout(r, 800));
       setLoading(false);
       document.getElementById('success-msg').textContent = successMsg + ' (Demo mode — belum terhubung ke Sheets)';
