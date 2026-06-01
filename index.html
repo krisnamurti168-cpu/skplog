@@ -481,7 +481,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         </label>
       </div>
 
-      <button class="submit-btn" onclick="loginUser()">Masuk</button>
+      <button class="submit-btn" id="login-submit-btn" onclick="loginUser()">Masuk</button>
     </div>
   </div>
 </div>
@@ -1319,6 +1319,9 @@ let drvState = { fu: 'N', tipeKeg: '' };
 let dashData = [];
 let currentUser = null;
 const AUTH_STORAGE_KEY = 'skp_auth_user_v1';
+let loginInProgress = false;
+let masterDataReady = false;
+let masterDataPromise = null;
 const screenRoleMap = {
   'screen-cs': 'cs',
   'screen-cs-list': 'cs',
@@ -1356,6 +1359,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('home-date').textContent =
     new Date().toLocaleDateString('id-ID', opts);
 
+  warmUpAppsScript();
   initAuth();
 
   document.addEventListener('keydown', e => {
@@ -1539,6 +1543,53 @@ function clearPhoto(fieldId) {
 
 
 // ── Auth / Login ─────────────────────────────────────────────
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchJsonWithRetry(url, options = {}, config = {}) {
+  const retries = config.retries ?? 2;
+  const timeoutMs = config.timeoutMs ?? 25000;
+  const retryDelayMs = config.retryDelayMs ?? 700;
+  let lastError;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        cache: 'no-store',
+      });
+      clearTimeout(timeout);
+
+      const text = await res.text();
+      if (!res.ok) {
+        throw new Error('Server merespons ' + res.status);
+      }
+      try {
+        return JSON.parse(text);
+      } catch (jsonErr) {
+        throw new Error('Respons server tidak valid. Pastikan Apps Script sudah deploy versi terbaru.');
+      }
+    } catch (err) {
+      clearTimeout(timeout);
+      lastError = err;
+      if (attempt < retries) {
+        await sleep(retryDelayMs * (attempt + 1));
+        continue;
+      }
+    }
+  }
+  throw lastError;
+}
+
+function warmUpAppsScript() {
+  // Memanggil action ringan agar Apps Script tidak cold start saat tombol login diklik.
+  fetch(APPS_SCRIPT_URL + '?action=ping&t=' + Date.now(), { cache: 'no-store' }).catch(() => {});
+}
+
 function getStoredAuth() {
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
@@ -1560,6 +1611,8 @@ function logoutLocal() {
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
   masterData = {};
+  masterDataReady = false;
+  masterDataPromise = null;
   updateAuthUI();
   go('screen-login');
 }
@@ -1570,13 +1623,24 @@ function initAuth() {
     currentUser = saved;
     updateAuthUI();
     go('screen-home');
-    loadMasterData();
+    loadMasterData({ silent: true });
   } else {
     go('screen-login');
   }
 }
 
+function setLoginBusy(on) {
+  loginInProgress = on;
+  const btn = document.getElementById('login-submit-btn');
+  if (btn) {
+    btn.disabled = on;
+    btn.textContent = on ? 'Memproses...' : 'Masuk';
+  }
+}
+
 async function loginUser() {
+  if (loginInProgress) return;
+
   const role = val('login-role');
   const username = val('login-username').trim().toLowerCase();
   const password = val('login-password').trim();
@@ -1586,16 +1650,17 @@ async function loginUser() {
   if (!username) { showToast('Isi username'); return; }
   if (!password) { showToast('Isi password'); return; }
 
+  setLoginBusy(true);
   setLoading(true);
   try {
-    const res = await fetch(APPS_SCRIPT_URL, {
+    const result = await fetchJsonWithRetry(APPS_SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action: 'login', data: { role, username, password } }),
-    });
-    const result = await res.json();
-    setLoading(false);
+    }, { retries: 2, timeoutMs: 30000, retryDelayMs: 800 });
 
     if (!result.success) {
+      setLoading(false);
+      setLoginBusy(false);
       showToast(result.error || 'Login gagal');
       return;
     }
@@ -1603,10 +1668,16 @@ async function loginUser() {
     currentUser = result.user;
     storeAuth(currentUser, remember);
     updateAuthUI();
-    await loadMasterData();
+
+    // Penting: setelah login valid, langsung masuk Home.
+    // Master data dimuat setelahnya di background, jadi user tidak perlu klik Masuk dua kali.
+    setLoading(false);
+    setLoginBusy(false);
     go('screen-home');
+    loadMasterData({ silent: true });
   } catch (e) {
     setLoading(false);
+    setLoginBusy(false);
     showToast('Tidak bisa login. Cek koneksi / deploy Apps Script.');
   }
 }
@@ -1615,10 +1686,10 @@ async function logoutUser() {
   const token = currentUser?.token;
   if (token) {
     try {
-      await fetch(APPS_SCRIPT_URL, {
+      await fetchJsonWithRetry(APPS_SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify({ action: 'logout', auth: token }),
-      });
+      }, { retries: 0, timeoutMs: 12000 });
     } catch (e) {}
   }
   logoutLocal();
@@ -1666,21 +1737,53 @@ function applyLoggedInUserToForms() {
 }
 
 // ── Load Master Data ─────────────────────────────────────────
-async function loadMasterData() {
+async function loadMasterData(options = {}) {
+  const silent = !!options.silent;
   if (!currentUser || !currentUser.token) {
-    go('screen-login');
-    return;
+    if (!silent) go('screen-login');
+    return null;
   }
-  try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getMasterData&token=' + encodeURIComponent(currentUser.token));
-    masterData = await res.json();
-    if (masterData.error) throw new Error(masterData.error);
-    populateDropdowns();
-    applyLoggedInUserToForms();
-  } catch (e) {
-    showToast('Gagal memuat data: ' + e.message);
-    if (/sesi|login|token|tidak valid/i.test(e.message)) logoutLocal();
-  }
+
+  // Kalau masih ada request berjalan, gunakan request yang sama agar tidak dobel.
+  if (masterDataPromise) return masterDataPromise;
+
+  masterDataPromise = (async () => {
+    try {
+      const result = await fetchJsonWithRetry(
+        APPS_SCRIPT_URL + '?action=getMasterData&token=' + encodeURIComponent(currentUser.token) + '&t=' + Date.now(),
+        {},
+        { retries: 3, timeoutMs: 30000, retryDelayMs: 900 }
+      );
+
+      if (result.success === false) throw new Error(result.error || 'Gagal memuat data');
+
+      masterData = result.masterData || result;
+      masterDataReady = true;
+      populateDropdowns();
+      applyLoggedInUserToForms();
+      return masterData;
+    } catch (e) {
+      masterDataReady = false;
+
+      // Baru logout kalau server jelas menyatakan token/sesi tidak valid.
+      // Kalau sekadar timeout/koneksi, jangan tendang user balik ke login.
+      if (/sesi|login|token|tidak valid/i.test(e.message)) {
+        if (!silent) showToast('Sesi login berakhir. Silakan login ulang.');
+        logoutLocal();
+        return null;
+      }
+
+      if (!silent) showToast('Data belum berhasil dimuat. Mencoba ulang...');
+      setTimeout(() => {
+        if (currentUser && !masterDataReady) loadMasterData({ silent: true });
+      }, 2500);
+      return null;
+    } finally {
+      masterDataPromise = null;
+    }
+  })();
+
+  return masterDataPromise;
 }
 
 function loadDemoData() {
@@ -2308,11 +2411,10 @@ async function doSubmit(action, data, successMsg) {
   else if (action === 'submitSecurity') lastSubmitRole = 'security';
   setLoading(true);
   try {
-    const res = await fetch(APPS_SCRIPT_URL, {
+    const result = await fetchJsonWithRetry(APPS_SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action, data, auth: currentUser?.token }),
-    });
-    const result = await res.json();
+    }, { retries: 2, timeoutMs: 45000, retryDelayMs: 1000 });
     setLoading(false);
     if (result.success) {
       document.getElementById('success-msg').textContent = successMsg;
@@ -2443,8 +2545,11 @@ async function loadListData(role) {
   const el = document.getElementById(bodyId[role]);
   el.innerHTML = '<div class="list-loading">Memuat data...</div>';
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getData&role=' + role + '&token=' + encodeURIComponent(currentUser?.token || ''));
-    const result = await res.json();
+    const result = await fetchJsonWithRetry(
+      APPS_SCRIPT_URL + '?action=getData&role=' + role + '&token=' + encodeURIComponent(currentUser?.token || '') + '&t=' + Date.now(),
+      {},
+      { retries: 2, timeoutMs: 30000, retryDelayMs: 800 }
+    );
     listData[role] = result.rows || [];
     renderList(role, listFilter_active[role]);
   } catch(e) {
@@ -2578,8 +2683,11 @@ function renderList(role, filter) {
 async function loadDashboard() {
   document.getElementById('dash-list').innerHTML = '<div class="list-loading">Memuat data...</div>';
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getData&token=' + encodeURIComponent(currentUser?.token || ''));
-    const result = await res.json();
+    const result = await fetchJsonWithRetry(
+      APPS_SCRIPT_URL + '?action=getData&token=' + encodeURIComponent(currentUser?.token || '') + '&t=' + Date.now(),
+      {},
+      { retries: 2, timeoutMs: 30000, retryDelayMs: 800 }
+    );
     dashData = result.rows || [];
     const today = new Date().toDateString();
     document.getElementById('dash-total').textContent = dashData.length;
