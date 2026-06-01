@@ -273,6 +273,72 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .list-item .li-meta { font-size:11px; color:var(--text3); margin-top:5px; font-family:var(--mono); }
 .list-item .li-foto { width:52px; height:52px; border-radius:6px; object-fit:cover; flex-shrink:0; cursor:pointer; }
 .list-item .li-foto-placeholder { width:52px; height:52px; border-radius:6px; background:var(--surface2); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:18px; }
+
+/* ── Photo Picker ── */
+.photo-picker {
+  display: flex; gap: 8px; margin-bottom: 8px;
+}
+.photo-pick-btn {
+  flex: 1; padding: 10px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 13px; font-family: var(--font);
+  font-weight: 500; color: var(--text); display: flex;
+  align-items: center; justify-content: center; gap: 6px;
+  transition: background .15s;
+}
+.photo-pick-btn:hover { background: var(--surface2); }
+.photo-pick-btn .icon { font-size: 16px; }
+.photo-preview-wrap {
+  position: relative; display: inline-block;
+  margin-top: 8px;
+}
+.photo-preview {
+  max-width: 100%; max-height: 200px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  display: block;
+}
+.photo-clear-btn {
+  position: absolute; top: 6px; right: 6px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(0,0,0,.7); color: #fff; border: none;
+  cursor: pointer; font-size: 16px; line-height: 1;
+}
+.photo-info {
+  font-size: 11px; color: var(--text2); margin-top: 4px;
+  font-family: var(--mono);
+}
+.photo-hidden { display: none !important; }
+
+/* ── Camera Modal ── */
+.cam-modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,.92);
+  z-index: 9999; display: flex; flex-direction: column;
+}
+.cam-modal.hidden { display: none; }
+.cam-video {
+  flex: 1; width: 100%; object-fit: cover; max-height: calc(100vh - 100px);
+}
+.cam-controls {
+  height: 100px; display: flex; align-items: center;
+  justify-content: space-around; padding: 0 20px;
+  background: rgba(0,0,0,.5);
+}
+.cam-btn {
+  width: 56px; height: 56px; border-radius: 50%;
+  border: 3px solid #fff; background: rgba(255,255,255,.1);
+  color: #fff; font-size: 22px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cam-btn.capture {
+  width: 72px; height: 72px; background: #fff;
+  color: var(--text); border-color: #fff;
+}
+.cam-status {
+  position: absolute; top: 20px; left: 20px; right: 20px;
+  color: #fff; font-size: 12px; text-align: center;
+  background: rgba(0,0,0,.5); padding: 8px 12px;
+  border-radius: 999px; font-family: var(--mono);
+}
 </style>
 </head>
 <body>
@@ -322,7 +388,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ CS FORM ════════════════════════════════════════════════ -->
 <div class="screen" id="screen-cs">
   <div class="top-bar">
-    <button class="back-btn" onclick="go('screen-home')">‹</button>
+    <button class="back-btn" onclick="goBack('cs')">‹</button>
     <div>
       <h1>Form CS / OB</h1>
       <span class="subtitle">Catat kegiatan harian</span>
@@ -376,7 +442,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
     <div class="form-group">
       <label>Foto <span class="req">*</span></label>
-      <input type="file" id="cs-foto" accept="image/*" capture="environment">
+      <div class="photo-picker">
+        <button type="button" class="photo-pick-btn" onclick="openCamera('cs-foto')"><span class="icon">📷</span> Kamera</button>
+        <button type="button" class="photo-pick-btn" onclick="document.getElementById('cs-foto-file').click()"><span class="icon">🖼️</span> Galeri</button>
+      </div>
+      <input type="file" id="cs-foto-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('cs-foto', this)">
+      <div id="cs-foto-preview-wrap" class="photo-hidden">
+        <div class="photo-preview-wrap">
+          <img id="cs-foto-preview" class="photo-preview">
+          <button type="button" class="photo-clear-btn" onclick="clearPhoto('cs-foto')">×</button>
+        </div>
+        <div class="photo-info" id="cs-foto-info"></div>
+      </div>
+      <input type="hidden" id="cs-foto">
     </div>
 
     <div class="form-group">
@@ -432,7 +510,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ DRIVER FORM ════════════════════════════════════════════ -->
 <div class="screen" id="screen-driver">
   <div class="top-bar">
-    <button class="back-btn" onclick="go('screen-home')">‹</button>
+    <button class="back-btn" onclick="goBack('driver')">‹</button>
     <div>
       <h1>Form Driver</h1>
       <span class="subtitle">Catat kegiatan pengantaran</span>
@@ -500,7 +578,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <div class="form-group">
         <label>Foto Struk BBM <span class="req">*</span></label>
-        <input type="file" id="drv-foto-bbm" accept="image/*" capture="environment">
+        <div class="photo-picker">
+        <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-bbm')"><span class="icon">📷</span> Kamera</button>
+        <button type="button" class="photo-pick-btn" onclick="document.getElementById('drv-foto-bbm-file').click()"><span class="icon">🖼️</span> Galeri</button>
+      </div>
+      <input type="file" id="drv-foto-bbm-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('drv-foto-bbm', this)">
+      <div id="drv-foto-bbm-preview-wrap" class="photo-hidden">
+        <div class="photo-preview-wrap">
+          <img id="drv-foto-bbm-preview" class="photo-preview">
+          <button type="button" class="photo-clear-btn" onclick="clearPhoto('drv-foto-bbm')">×</button>
+        </div>
+        <div class="photo-info" id="drv-foto-bbm-info"></div>
+      </div>
+      <input type="hidden" id="drv-foto-bbm">
       </div>
     </div>
 
@@ -542,7 +632,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <div class="form-group">
         <label>Foto Tambahan</label>
-        <input type="file" id="drv-foto-rekap" accept="image/*" capture="environment">
+        <div class="photo-picker">
+        <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-rekap')"><span class="icon">📷</span> Kamera</button>
+        <button type="button" class="photo-pick-btn" onclick="document.getElementById('drv-foto-rekap-file').click()"><span class="icon">🖼️</span> Galeri</button>
+      </div>
+      <input type="file" id="drv-foto-rekap-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('drv-foto-rekap', this)">
+      <div id="drv-foto-rekap-preview-wrap" class="photo-hidden">
+        <div class="photo-preview-wrap">
+          <img id="drv-foto-rekap-preview" class="photo-preview">
+          <button type="button" class="photo-clear-btn" onclick="clearPhoto('drv-foto-rekap')">×</button>
+        </div>
+        <div class="photo-info" id="drv-foto-rekap-info"></div>
+      </div>
+      <input type="hidden" id="drv-foto-rekap">
       </div>
     </div>
 
@@ -599,7 +701,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <div class="form-group">
         <label>Foto Kondisi Kendaraan</label>
-        <input type="file" id="drv-foto-kondisi" accept="image/*" capture="environment">
+        <div class="photo-picker">
+        <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-kondisi')"><span class="icon">📷</span> Kamera</button>
+        <button type="button" class="photo-pick-btn" onclick="document.getElementById('drv-foto-kondisi-file').click()"><span class="icon">🖼️</span> Galeri</button>
+      </div>
+      <input type="file" id="drv-foto-kondisi-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('drv-foto-kondisi', this)">
+      <div id="drv-foto-kondisi-preview-wrap" class="photo-hidden">
+        <div class="photo-preview-wrap">
+          <img id="drv-foto-kondisi-preview" class="photo-preview">
+          <button type="button" class="photo-clear-btn" onclick="clearPhoto('drv-foto-kondisi')">×</button>
+        </div>
+        <div class="photo-info" id="drv-foto-kondisi-info"></div>
+      </div>
+      <input type="hidden" id="drv-foto-kondisi">
       </div>
     </div>
 
@@ -620,7 +734,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <div class="form-group">
         <label>Foto Follow Up</label>
-        <input type="file" id="drv-foto-fu" accept="image/*" capture="environment">
+        <div class="photo-picker">
+        <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-fu')"><span class="icon">📷</span> Kamera</button>
+        <button type="button" class="photo-pick-btn" onclick="document.getElementById('drv-foto-fu-file').click()"><span class="icon">🖼️</span> Galeri</button>
+      </div>
+      <input type="file" id="drv-foto-fu-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('drv-foto-fu', this)">
+      <div id="drv-foto-fu-preview-wrap" class="photo-hidden">
+        <div class="photo-preview-wrap">
+          <img id="drv-foto-fu-preview" class="photo-preview">
+          <button type="button" class="photo-clear-btn" onclick="clearPhoto('drv-foto-fu')">×</button>
+        </div>
+        <div class="photo-info" id="drv-foto-fu-info"></div>
+      </div>
+      <input type="hidden" id="drv-foto-fu">
       </div>
     </div>
 
@@ -631,7 +757,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ SECURITY FORM ══════════════════════════════════════════ -->
 <div class="screen" id="screen-security">
   <div class="top-bar">
-    <button class="back-btn" onclick="go('screen-home')">‹</button>
+    <button class="back-btn" onclick="goBack('security')">‹</button>
     <div>
       <h1>Form Security</h1>
       <span class="subtitle">Catat kegiatan keamanan</span>
@@ -710,7 +836,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <div class="form-group">
         <label>Foto <span class="req">*</span></label>
-        <input type="file" id="sec-foto-piket" accept="image/*" capture="environment">
+        <div class="photo-picker">
+        <button type="button" class="photo-pick-btn" onclick="openCamera('sec-foto-piket')"><span class="icon">📷</span> Kamera</button>
+        <button type="button" class="photo-pick-btn" onclick="document.getElementById('sec-foto-piket-file').click()"><span class="icon">🖼️</span> Galeri</button>
+      </div>
+      <input type="file" id="sec-foto-piket-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('sec-foto-piket', this)">
+      <div id="sec-foto-piket-preview-wrap" class="photo-hidden">
+        <div class="photo-preview-wrap">
+          <img id="sec-foto-piket-preview" class="photo-preview">
+          <button type="button" class="photo-clear-btn" onclick="clearPhoto('sec-foto-piket')">×</button>
+        </div>
+        <div class="photo-info" id="sec-foto-piket-info"></div>
+      </div>
+      <input type="hidden" id="sec-foto-piket">
       </div>
     </div>
 
@@ -809,7 +947,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <div class="form-group">
         <label>Foto (opsional)</label>
-        <input type="file" id="sec-foto-surat" accept="image/*" capture="environment">
+        <div class="photo-picker">
+        <button type="button" class="photo-pick-btn" onclick="openCamera('sec-foto-surat')"><span class="icon">📷</span> Kamera</button>
+        <button type="button" class="photo-pick-btn" onclick="document.getElementById('sec-foto-surat-file').click()"><span class="icon">🖼️</span> Galeri</button>
+      </div>
+      <input type="file" id="sec-foto-surat-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('sec-foto-surat', this)">
+      <div id="sec-foto-surat-preview-wrap" class="photo-hidden">
+        <div class="photo-preview-wrap">
+          <img id="sec-foto-surat-preview" class="photo-preview">
+          <button type="button" class="photo-clear-btn" onclick="clearPhoto('sec-foto-surat')">×</button>
+        </div>
+        <div class="photo-info" id="sec-foto-surat-info"></div>
+      </div>
+      <input type="hidden" id="sec-foto-surat">
       </div>
     </div>
 
@@ -836,7 +986,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <div class="form-group hidden" id="sec-foto-genset-wrap">
         <label>Foto Kondisi Genset <span class="req">*</span></label>
-        <input type="file" id="sec-foto-genset" accept="image/*" capture="environment">
+        <div class="photo-picker">
+        <button type="button" class="photo-pick-btn" onclick="openCamera('sec-foto-genset')"><span class="icon">📷</span> Kamera</button>
+        <button type="button" class="photo-pick-btn" onclick="document.getElementById('sec-foto-genset-file').click()"><span class="icon">🖼️</span> Galeri</button>
+      </div>
+      <input type="file" id="sec-foto-genset-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('sec-foto-genset', this)">
+      <div id="sec-foto-genset-preview-wrap" class="photo-hidden">
+        <div class="photo-preview-wrap">
+          <img id="sec-foto-genset-preview" class="photo-preview">
+          <button type="button" class="photo-clear-btn" onclick="clearPhoto('sec-foto-genset')">×</button>
+        </div>
+        <div class="photo-info" id="sec-foto-genset-info"></div>
+      </div>
+      <input type="hidden" id="sec-foto-genset">
       </div>
     </div>
 
@@ -857,7 +1019,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <div class="form-group">
         <label>Foto Follow Up</label>
-        <input type="file" id="sec-foto-fu" accept="image/*" capture="environment">
+        <div class="photo-picker">
+        <button type="button" class="photo-pick-btn" onclick="openCamera('sec-foto-fu')"><span class="icon">📷</span> Kamera</button>
+        <button type="button" class="photo-pick-btn" onclick="document.getElementById('sec-foto-fu-file').click()"><span class="icon">🖼️</span> Galeri</button>
+      </div>
+      <input type="file" id="sec-foto-fu-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('sec-foto-fu', this)">
+      <div id="sec-foto-fu-preview-wrap" class="photo-hidden">
+        <div class="photo-preview-wrap">
+          <img id="sec-foto-fu-preview" class="photo-preview">
+          <button type="button" class="photo-clear-btn" onclick="clearPhoto('sec-foto-fu')">×</button>
+        </div>
+        <div class="photo-info" id="sec-foto-fu-info"></div>
+      </div>
+      <input type="hidden" id="sec-foto-fu">
       </div>
     </div>
 
@@ -956,8 +1130,21 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <div class="check">✅</div>
     <h2>Tersimpan!</h2>
     <p id="success-msg">Data berhasil dicatat.</p>
-    <button class="btn-home" onclick="go('screen-home')">← Kembali ke Beranda</button>
+    <button class="btn-home" onclick="goBackFromSuccess()">← Kembali ke Daftar</button>
   </div>
+</div>
+
+
+<!-- Camera Modal -->
+<div class="cam-modal hidden" id="cam-modal">
+  <div class="cam-status" id="cam-status">Memuat kamera...</div>
+  <video class="cam-video" id="cam-video" autoplay playsinline></video>
+  <div class="cam-controls">
+    <button class="cam-btn" onclick="closeCamera()">✕</button>
+    <button class="cam-btn capture" onclick="takePhoto()">●</button>
+    <button class="cam-btn" onclick="switchCamera()">🔄</button>
+  </div>
+  <canvas id="cam-canvas" style="display:none"></canvas>
 </div>
 
 </div><!-- /app -->
@@ -982,6 +1169,24 @@ let csState = { kegiatan: '', kantor: '', lokasi: '', fu: 'N' };
 let secState = { kantor: '', jenisKeg: '', statusKend: '', tipeKend: '', kondisiAccu: '', kondisiRadiator: '', fu: 'N', kejadian: 'N', statusSurat: 'Belum' };
 let drvState = { fu: 'N', tipeKeg: '' };
 let dashData = [];
+
+// Track origin screen untuk back button context-aware
+let formOrigin = { cs: 'screen-home', driver: 'screen-home', security: 'screen-home' };
+
+function goBack(role) {
+  const origin = formOrigin[role] || 'screen-home';
+  go(origin);
+}
+
+function goBackFromSuccess() {
+  if (lastSubmitRole) {
+    const screenMap = { security: 'screen-security-list', driver: 'screen-driver-list', cs: 'screen-cs-list' };
+    go(screenMap[lastSubmitRole]);
+    loadListData(lastSubmitRole);
+  } else {
+    go('screen-home');
+  }
+}
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -1011,6 +1216,161 @@ document.addEventListener('DOMContentLoaded', () => {
     'STNK','KIR','Asuransi','Kartu BBM','Buku servis','SIM driver'
   ]);
 });
+
+
+// ══════════════════════════════════════════════════════════════
+// PHOTO PICKER + CAMERA + WATERMARK
+// ══════════════════════════════════════════════════════════════
+let camStream = null;
+let camFacingMode = 'environment';
+let camCurrentField = null;
+let camLastLocation = null;
+
+async function openCamera(fieldId) {
+  camCurrentField = fieldId;
+  document.getElementById('cam-modal').classList.remove('hidden');
+  document.getElementById('cam-status').textContent = 'Memuat kamera...';
+
+  // Coba dapatkan lokasi GPS dulu (paralel dengan loading kamera)
+  camLastLocation = null;
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        camLastLocation = {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        };
+        document.getElementById('cam-status').textContent =
+          'GPS aktif • Akurasi ±' + Math.round(pos.coords.accuracy) + 'm';
+      },
+      err => {
+        camLastLocation = null;
+        document.getElementById('cam-status').textContent =
+          'GPS tidak aktif • Watermark hanya waktu';
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  }
+
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: camFacingMode },
+      audio: false
+    });
+    const video = document.getElementById('cam-video');
+    video.srcObject = camStream;
+  } catch (e) {
+    showToast('Gagal membuka kamera: ' + e.message);
+    closeCamera();
+  }
+}
+
+function closeCamera() {
+  if (camStream) {
+    camStream.getTracks().forEach(t => t.stop());
+    camStream = null;
+  }
+  document.getElementById('cam-modal').classList.add('hidden');
+}
+
+async function switchCamera() {
+  camFacingMode = camFacingMode === 'environment' ? 'user' : 'environment';
+  if (camStream) camStream.getTracks().forEach(t => t.stop());
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: camFacingMode },
+      audio: false
+    });
+    document.getElementById('cam-video').srcObject = camStream;
+  } catch (e) {
+    showToast('Tidak bisa ganti kamera');
+  }
+}
+
+async function takePhoto() {
+  const video = document.getElementById('cam-video');
+  const canvas = document.getElementById('cam-canvas');
+  const w = video.videoWidth, h = video.videoHeight;
+  if (!w || !h) { showToast('Kamera belum siap'); return; }
+
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, w, h);
+
+  // Tambahkan watermark
+  applyWatermark(ctx, w, h, true);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  applyPhotoToField(camCurrentField, dataUrl, true);
+  closeCamera();
+}
+
+function applyWatermark(ctx, w, h, hasGPS) {
+  const now = new Date();
+  const tgl = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  let line1 = tgl + ' • ' + jam;
+  let line2 = null;
+  if (camLastLocation) {
+    line2 = camLastLocation.lat.toFixed(6) + ', ' + camLastLocation.lon.toFixed(6)
+          + ' (±' + Math.round(camLastLocation.accuracy) + 'm)';
+  }
+
+  // Ukuran font proporsional dengan tinggi gambar
+  const fontSize = Math.max(16, Math.round(h / 35));
+  const padding = Math.round(fontSize * 0.7);
+  const lineHeight = fontSize * 1.3;
+  const totalLines = line2 ? 2 : 1;
+  const boxHeight = padding * 2 + lineHeight * totalLines;
+
+  // Background semi-transparan di bawah
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(0, h - boxHeight, w, boxHeight);
+
+  // Teks putih
+  ctx.fillStyle = '#fff';
+  ctx.font = '600 ' + fontSize + 'px sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.fillText(line1, padding, h - boxHeight + padding);
+  if (line2) {
+    ctx.font = fontSize + 'px sans-serif';
+    ctx.fillText(line2, padding, h - boxHeight + padding + lineHeight);
+  }
+}
+
+function handleGalleryPick(fieldId, fileInput) {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    applyPhotoToField(fieldId, e.target.result, false);
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyPhotoToField(fieldId, dataUrl, isFromCamera) {
+  document.getElementById(fieldId).value = dataUrl;
+  document.getElementById(fieldId + '-preview').src = dataUrl;
+  document.getElementById(fieldId + '-preview-wrap').classList.remove('photo-hidden');
+  const info = document.getElementById(fieldId + '-info');
+  if (isFromCamera) {
+    const loc = camLastLocation ? ' • GPS ✓' : ' • Tanpa GPS';
+    info.textContent = '📷 Diambil dari kamera' + loc;
+  } else {
+    info.textContent = '🖼️ Dipilih dari galeri';
+  }
+}
+
+function clearPhoto(fieldId) {
+  document.getElementById(fieldId).value = '';
+  document.getElementById(fieldId + '-preview-wrap').classList.add('photo-hidden');
+  const fileEl = document.getElementById(fieldId + '-file');
+  if (fileEl) fileEl.value = '';
+}
+
 
 // ── Load Master Data ─────────────────────────────────────────
 async function loadMasterData() {
@@ -1372,6 +1732,7 @@ async function submitCS() {
     jenisLaporan: val('cs-jenis-laporan'),
     detailLaporan: val('cs-detail-laporan'),
     jumlahBarang: val('cs-jumlah'),
+    foto: val('cs-foto'),
   };
 
   await doSubmit('submitCS', data, 'Data CS berhasil disimpan!');
@@ -1478,6 +1839,10 @@ async function submitDriver() {
     keteranganPajak: val('drv-ket-pajak'),
     perluFollowUp: drvState.fu,
     detailLaporan: val('drv-detail-laporan'),
+    fotoBBM: val('drv-foto-bbm'),
+    fotoTambahan: val('drv-foto-rekap'),
+    fotoKondisiKendaraan: val('drv-foto-kondisi'),
+    fotoFollowUp: val('drv-foto-fu'),
   };
 
   await doSubmit('submitDriver', data, 'Data Driver berhasil disimpan!');
@@ -1615,13 +1980,22 @@ async function submitSecurity() {
     stokBBMGenset: val('sec-stok-bbm'),
     perluFollowUp: secState.fu,
     detailLaporan: val('sec-detail-laporan'),
+    fotoPiket: val('sec-foto-piket'),
+    fotoSurat: val('sec-foto-surat'),
+    fotoGenset: val('sec-foto-genset'),
+    fotoFollowUp: val('sec-foto-fu'),
   };
 
   await doSubmit('submitSecurity', data, 'Data Security berhasil disimpan!');
 }
 
 // ── Submit Handler ────────────────────────────────────────────
+let lastSubmitRole = null;
 async function doSubmit(action, data, successMsg) {
+  // Track role yang baru submit untuk navigasi sukses
+  if (action === 'submitCS') lastSubmitRole = 'cs';
+  else if (action === 'submitDriver') lastSubmitRole = 'driver';
+  else if (action === 'submitSecurity') lastSubmitRole = 'security';
   setLoading(true);
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
@@ -1696,6 +2070,15 @@ function lookupKegiatan(id) {
   const k = (masterData.jenisKegiatanCS||[]).find(x => x.KegiatanID === id || x.NamaKegiatan === id);
   return k ? k.NamaKegiatan : id;
 }
+function lookupKegiatanDriver(id) {
+  if (!id) return '-';
+  // Driver pakai prefix KD00x untuk JenisKegiatan (sama dengan KendaraanDinas)
+  // Master kolomnya bisa: KegiatanDriverID atau KegiatanID
+  const k = (masterData.jenisKegiatanDriver||[]).find(x =>
+    x.KegiatanDriverID === id || x.KegiatanID === id || x.NamaKegiatan === id
+  );
+  return k ? k.NamaKegiatan : id;
+}
 function lookupLokasi(id) {
   if (!id) return '-';
   const l = (masterData.lokasi||[]).find(x => x.LokasiID === (id||'').trim());
@@ -1710,7 +2093,12 @@ function lookupDetailKegiatan(ids) {
 }
 function lookupKendaraan(id) {
   if (!id) return '-';
-  const k = (masterData.kendaraanDinas||[]).find(x => x.KendaraanID === id || x.NamaKendaraan === id);
+  // Coba exact match dulu
+  let k = (masterData.kendaraanDinas||[]).find(x => x.KendaraanID === id || x.NamaKendaraan === id);
+  if (!k) {
+    // Coba match plat nomor
+    k = (masterData.kendaraanDinas||[]).find(x => x.Plat && x.Plat.replace(/\s/g,'').toLowerCase() === id.replace(/\s/g,'').toLowerCase());
+  }
   return k ? k.NamaKendaraan + ' (' + k.Plat + ')' : id;
 }
 function lookupKeperluan(id) {
@@ -1732,6 +2120,8 @@ let listFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
 
 function goList(role) {
   const screenMap = { security: 'screen-security-list', driver: 'screen-driver-list', cs: 'screen-cs-list' };
+  // Set origin form ke list view, jadi kalau user buka form lalu back, balik ke list
+  formOrigin[role] = screenMap[role];
   go(screenMap[role]);
   loadListData(role);
 }
@@ -1771,11 +2161,32 @@ function renderList(role, filter) {
     'Slave': 'Pemeliharaan Transportable Slave',
   };
 
+  // Map filter pendek ke kata kunci yang ada di nama lengkap
+  const filterKeyMap = {
+    'BBM': 'BBM',
+    'Rekap': 'Rekapitulasi',
+    'Kondisi': 'Kondisi',
+    'Piket': 'Piket',
+    'Kendaraan': 'Pencatatan Kendaraan',
+    'Surat': 'Surat',
+    'Genset': 'Genset',
+    'Monitoring': 'Monitoring',
+    'KM': 'Kamar Mandi',
+    'Vakum': 'Vakum',
+    'Slave': 'Slave',
+  };
+
   const filtered = filter === 'semua' ? rows : rows.filter(r => {
     const jk = r.JenisKegiatan || r.Kegiatan || '';
-    const namaJk = lookupKegiatan(jk);
-    const filterFull = csKegiatanMap[filter] || filter;
-    return jk === filterFull || jk === filter || namaJk === filterFull || namaJk.includes(filter) || jk.includes(filter);
+    // Resolve nama berdasarkan role
+    let namaJk = jk;
+    if (role === 'cs') namaJk = lookupKegiatan(jk);
+    else if (role === 'driver') namaJk = lookupKegiatanDriver(jk);
+    const keyword = filterKeyMap[filter] || filter;
+    const csMap = csKegiatanMap[filter];
+    return jk === filter || jk === csMap
+      || jk.includes(keyword) || namaJk.includes(keyword)
+      || (csMap && (jk === csMap || namaJk === csMap));
   });
 
   if (!filtered.length) {
@@ -1787,7 +2198,9 @@ function renderList(role, filter) {
     const ts   = r.Timestamp ? new Date(r.Timestamp).toLocaleString('id-ID', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
     const nama = lookupNama(r.NamaPegawai);
     const jkRaw = r.JenisKegiatan || r.Kegiatan || '-';
-    const jk   = role === 'cs' ? lookupKegiatan(jkRaw) : jkRaw;
+    let jk = jkRaw;
+    if (role === 'cs') jk = lookupKegiatan(jkRaw);
+    else if (role === 'driver') jk = lookupKegiatanDriver(jkRaw);
     const fu   = (r.PerluFollowUp === 'Y' || r.PerluFollowUp === true)
       ? '<span class="badge badge-fu">Follow Up</span>'
       : '<span class="badge badge-ok">Selesai</span>';
@@ -1810,10 +2223,21 @@ function renderList(role, filter) {
         detail = `Accu: ${r.KondisiAccu||'-'} &bull; Radiator: ${r.KondisiRadiator||'-'} &bull; BBM: ${r.StokBBMGenset||'-'}`;
       }
     } else if (role === 'driver') {
+      // jkRaw bisa kode (KD001/002/003) atau nama. Resolve dulu.
+      const namaJk = lookupKegiatanDriver(jkRaw);
       const kend = lookupKendaraan(r.KendaraanDinas);
-      if (jkRaw.includes('BBM')) detail = `${kend} &bull; Rp ${Number(r.NominalBBM||0).toLocaleString('id-ID')}`;
-      else if (jkRaw.includes('Rekapitulasi')) detail = `${kend} &bull; ${r.TahapKegiatan||'-'} &bull; Odo: ${r.OdometerAwal||r.OdometerAkhir||'-'}`;
-      else if (jkRaw.includes('Kondisi')) detail = `${kend} &bull; Odo: ${r.OdometerValue||'-'} km`;
+      const kep  = lookupKeperluan(r.KegiatanBBM);
+      if (namaJk.includes('BBM')) {
+        detail = `${kend} &bull; Rp ${Number(r.NominalBBM||0).toLocaleString('id-ID')} &bull; ${kep}`;
+      } else if (namaJk.includes('Rekapitulasi')) {
+        const tahap = r.TahapKegiatan || '-';
+        const odo = r.OdometerAwal || r.OdometerAkhir || '-';
+        detail = `${kend} &bull; ${tahap} &bull; Odo: ${odo}`;
+      } else if (namaJk.includes('Kondisi')) {
+        detail = `${kend} &bull; Odo: ${r.OdometerValue||'-'} km`;
+      } else {
+        detail = `${kend}`;
+      }
     } else if (role === 'cs') {
       const lokasiNama = lookupLokasi(r.Lokasi);
       const detailNama = lookupDetailKegiatan(r.DetailKegiatanDilakukan||'');
@@ -1868,7 +2292,9 @@ function renderDash(filter) {
     const role = (d._role||'').toLowerCase();
     const ts   = d.Timestamp ? new Date(d.Timestamp).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
     const jkRaw = d.JenisKegiatan || d.Kegiatan || '-';
-    const jk   = role === 'cs' ? lookupKegiatan(jkRaw) : jkRaw;
+    let jk = jkRaw;
+    if (role === 'cs') jk = lookupKegiatan(jkRaw);
+    else if (role === 'driver') jk = lookupKegiatanDriver(jkRaw);
     const nama = lookupNama(d.NamaPegawai);
     const fu   = d.PerluFollowUp === 'Y';
     return `
