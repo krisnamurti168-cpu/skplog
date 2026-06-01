@@ -123,7 +123,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 }
 .form-group label .req { color: var(--red); margin-left: 2px; }
 
-input[type=text], input[type=number], input[type=date],
+input[type=text], input[type=password], input[type=number], input[type=date],
 input[type=time], input[type=file], select, textarea {
   width: 100%; padding: 10px 14px;
   border: 1px solid var(--border); border-radius: var(--radius-sm);
@@ -342,18 +342,163 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   background: rgba(0,0,0,.5); padding: 8px 12px;
   border-radius: 999px; font-family: var(--mono);
 }
+
+
+/* ── Auth / Login ── */
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 20px;
+}
+.login-card {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 26px 22px;
+  box-shadow: var(--shadow);
+}
+.login-card .logo {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.login-card h1 {
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -.4px;
+  margin-bottom: 6px;
+}
+.login-card p {
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.login-hint {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+  margin: 10px 0 16px;
+}
+.remember-line {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--text2) !important;
+  cursor: pointer;
+}
+.remember-line input { width: 15px; height: 15px; accent-color: var(--text); }
+.auth-userbar {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.auth-userbar span {
+  display: block;
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 2px;
+}
+.auth-userbar b {
+  font-size: 13px;
+  font-weight: 600;
+}
+.logout-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--font);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.logout-btn:hover { background: var(--bg); }
+.role-card.locked { display: none !important; }
+.role-card.disabled {
+  opacity: .45;
+  pointer-events: none;
+}
+
 </style>
 </head>
 <body>
 
 <div class="app" id="app">
 
+<!-- ══ LOGIN ═════════════════════════════════════════════════ -->
+<div class="screen active" id="screen-login">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="logo">PPPK — Aplikasi Log Kegiatan</div>
+      <h1>Masuk Akun</h1>
+      <p>Silakan login sesuai role sebelum mengisi log kegiatan.</p>
+
+      <div class="form-group">
+        <label>Role <span class="req">*</span></label>
+        <select id="login-role">
+          <option value="">— Pilih role —</option>
+          <option value="security">Security</option>
+          <option value="driver">Driver</option>
+          <option value="cs">CS</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Username <span class="req">*</span></label>
+        <input type="text" id="login-username" placeholder="Masukkan username" autocomplete="username" autocapitalize="none" spellcheck="false">
+      </div>
+
+      <div class="form-group">
+        <label>Password <span class="req">*</span></label>
+        <input type="password" id="login-password" placeholder="Masukkan password" autocomplete="current-password">
+      </div>
+
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="remember-line">
+          <input type="checkbox" id="login-remember" checked>
+          Tetap login di perangkat ini
+        </label>
+      </div>
+
+      <button class="submit-btn" onclick="loginUser()">Masuk</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ HOME ══════════════════════════════════════════════════ -->
-<div class="screen active" id="screen-home">
+<div class="screen" id="screen-home">
   <div class="home-header">
     <div class="logo">PPPK — Aplikasi Log Kegiatan</div>
     <h2>SKP Log</h2>
     <p id="home-date"></p>
+    <div class="auth-userbar">
+      <div>
+        <span>Login sebagai</span>
+        <b id="auth-user-name">-</b>
+      </div>
+      <button class="logout-btn" onclick="logoutUser()">Logout / Ganti Akun</button>
+    </div>
   </div>
 
   <div class="section-title">Input Kegiatan</div>
@@ -1172,6 +1317,17 @@ let csState = { kegiatan: '', kantor: '', lokasi: '', fu: 'N' };
 let secState = { kantor: '', jenisKeg: '', statusKend: '', tipeKend: '', kondisiAccu: '', kondisiRadiator: '', fu: 'N', kejadian: 'N', statusSurat: 'Belum' };
 let drvState = { fu: 'N', tipeKeg: '' };
 let dashData = [];
+let currentUser = null;
+const AUTH_STORAGE_KEY = 'skp_auth_user_v1';
+const screenRoleMap = {
+  'screen-cs': 'cs',
+  'screen-cs-list': 'cs',
+  'screen-driver': 'driver',
+  'screen-driver-list': 'driver',
+  'screen-security': 'security',
+  'screen-security-list': 'security'
+};
+const ROLE_LABEL = { security: 'Security', driver: 'Driver', cs: 'CS' };
 
 // Track origin screen untuk back button context-aware
 let formOrigin = { cs: 'screen-home', driver: 'screen-home', security: 'screen-home' };
@@ -1200,7 +1356,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('home-date').textContent =
     new Date().toLocaleDateString('id-ID', opts);
 
-  loadMasterData();
+  initAuth();
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('screen-login')?.classList.contains('active')) {
+      loginUser();
+    }
+  });
 
   // Checklist kondisi kendaraan
   renderCheckboxList('drv-kebersihan-list', [
@@ -1375,14 +1537,149 @@ function clearPhoto(fieldId) {
 }
 
 
+
+// ── Auth / Login ─────────────────────────────────────────────
+function getStoredAuth() {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function storeAuth(user, remember) {
+  const target = remember ? localStorage : sessionStorage;
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  target.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+}
+
+function logoutLocal() {
+  currentUser = null;
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  masterData = {};
+  updateAuthUI();
+  go('screen-login');
+}
+
+function initAuth() {
+  const saved = getStoredAuth();
+  if (saved && saved.token) {
+    currentUser = saved;
+    updateAuthUI();
+    go('screen-home');
+    loadMasterData();
+  } else {
+    go('screen-login');
+  }
+}
+
+async function loginUser() {
+  const role = val('login-role');
+  const username = val('login-username').trim().toLowerCase();
+  const password = val('login-password').trim();
+  const remember = document.getElementById('login-remember').checked;
+
+  if (!role) { showToast('Pilih role dulu'); return; }
+  if (!username) { showToast('Isi username'); return; }
+  if (!password) { showToast('Isi password'); return; }
+
+  setLoading(true);
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'login', data: { role, username, password } }),
+    });
+    const result = await res.json();
+    setLoading(false);
+
+    if (!result.success) {
+      showToast(result.error || 'Login gagal');
+      return;
+    }
+
+    currentUser = result.user;
+    storeAuth(currentUser, remember);
+    updateAuthUI();
+    await loadMasterData();
+    go('screen-home');
+  } catch (e) {
+    setLoading(false);
+    showToast('Tidak bisa login. Cek koneksi / deploy Apps Script.');
+  }
+}
+
+async function logoutUser() {
+  const token = currentUser?.token;
+  if (token) {
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'logout', auth: token }),
+      });
+    } catch (e) {}
+  }
+  logoutLocal();
+}
+
+function updateAuthUI() {
+  const nameEl = document.getElementById('auth-user-name');
+  if (nameEl) {
+    nameEl.textContent = currentUser
+      ? `${currentUser.nama} • ${ROLE_LABEL[currentUser.role] || currentUser.role}`
+      : '-';
+  }
+
+  document.querySelectorAll('.role-card.security').forEach(el => el.classList.toggle('locked', !!currentUser && currentUser.role !== 'security'));
+  document.querySelectorAll('.role-card.driver').forEach(el => el.classList.toggle('locked', !!currentUser && currentUser.role !== 'driver'));
+  document.querySelectorAll('.role-card.cs').forEach(el => el.classList.toggle('locked', !!currentUser && currentUser.role !== 'cs'));
+}
+
+function guardRoleAccess(role) {
+  if (!currentUser) {
+    go('screen-login');
+    return false;
+  }
+  if (currentUser.role !== role) {
+    showToast(`Akun ini hanya untuk role ${ROLE_LABEL[currentUser.role] || currentUser.role}`);
+    return false;
+  }
+  return true;
+}
+
+function applyLoggedInUserToForms() {
+  if (!currentUser) return;
+  const map = { cs: 'cs-pegawai', driver: 'drv-pegawai', security: 'sec-pegawai' };
+  Object.entries(map).forEach(([role, selectId]) => {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+    if (role === currentUser.role) {
+      el.value = currentUser.pegawaiID;
+      el.disabled = true;
+    } else {
+      el.disabled = false;
+    }
+  });
+  updateAuthUI();
+}
+
 // ── Load Master Data ─────────────────────────────────────────
 async function loadMasterData() {
+  if (!currentUser || !currentUser.token) {
+    go('screen-login');
+    return;
+  }
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getMasterData');
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getMasterData&token=' + encodeURIComponent(currentUser.token));
     masterData = await res.json();
+    if (masterData.error) throw new Error(masterData.error);
     populateDropdowns();
+    applyLoggedInUserToForms();
   } catch (e) {
-    loadDemoData();
+    showToast('Gagal memuat data: ' + e.message);
+    if (/sesi|login|token|tidak valid/i.test(e.message)) logoutLocal();
   }
 }
 
@@ -1574,6 +1871,16 @@ function fillSelect(id, items, valKey, labelFn) {
 
 // ── Screen Navigation ─────────────────────────────────────────
 function go(screenId) {
+  if (screenId !== 'screen-login' && !currentUser) {
+    screenId = 'screen-login';
+  }
+
+  const requiredRole = screenRoleMap[screenId];
+  if (requiredRole && currentUser && currentUser.role !== requiredRole) {
+    showToast(`Akun ini hanya untuk role ${ROLE_LABEL[currentUser.role] || currentUser.role}`);
+    screenId = 'screen-home';
+  }
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(screenId).classList.add('active');
   window.scrollTo(0, 0);
@@ -2003,7 +2310,7 @@ async function doSubmit(action, data, successMsg) {
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({ action, data }),
+      body: JSON.stringify({ action, data, auth: currentUser?.token }),
     });
     const result = await res.json();
     setLoading(false);
@@ -2122,6 +2429,7 @@ let listData = { security: [], driver: [], cs: [] };
 let listFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
 
 function goList(role) {
+  if (!guardRoleAccess(role)) return;
   const screenMap = { security: 'screen-security-list', driver: 'screen-driver-list', cs: 'screen-cs-list' };
   // Set origin form ke list view, jadi kalau user buka form lalu back, balik ke list
   formOrigin[role] = screenMap[role];
@@ -2130,11 +2438,12 @@ function goList(role) {
 }
 
 async function loadListData(role) {
+  if (!guardRoleAccess(role)) return;
   const bodyId = { security: 'sec-list-body', driver: 'drv-list-body', cs: 'cs-list-body' };
   const el = document.getElementById(bodyId[role]);
   el.innerHTML = '<div class="list-loading">Memuat data...</div>';
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getData&role=' + role);
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getData&role=' + role + '&token=' + encodeURIComponent(currentUser?.token || ''));
     const result = await res.json();
     listData[role] = result.rows || [];
     renderList(role, listFilter_active[role]);
@@ -2269,7 +2578,7 @@ function renderList(role, filter) {
 async function loadDashboard() {
   document.getElementById('dash-list').innerHTML = '<div class="list-loading">Memuat data...</div>';
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getData');
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getData&token=' + encodeURIComponent(currentUser?.token || ''));
     const result = await res.json();
     dashData = result.rows || [];
     const today = new Date().toDateString();
