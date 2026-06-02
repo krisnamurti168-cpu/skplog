@@ -1471,7 +1471,7 @@ async function takePhoto() {
   // Tambahkan watermark
   applyWatermark(ctx, w, h, true);
 
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  const dataUrl = canvasToCompressedDataUrl(canvas, 1600, 0.82);
   applyPhotoToField(camCurrentField, dataUrl, true);
   closeCamera();
 }
@@ -1514,10 +1514,46 @@ function handleGalleryPick(fieldId, fileInput) {
   const file = fileInput.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
-    applyPhotoToField(fieldId, e.target.result, false);
+  reader.onload = async e => {
+    try {
+      const compressed = await compressImageDataUrl(e.target.result, 1600, 0.82);
+      applyPhotoToField(fieldId, compressed, false);
+    } catch (err) {
+      applyPhotoToField(fieldId, e.target.result, false);
+    }
   };
   reader.readAsDataURL(file);
+}
+
+function canvasToCompressedDataUrl(sourceCanvas, maxSide = 1600, quality = 0.82) {
+  const w = sourceCanvas.width;
+  const h = sourceCanvas.height;
+  const scale = Math.min(1, maxSide / Math.max(w, h));
+  if (scale >= 1) return sourceCanvas.toDataURL('image/jpeg', quality);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(w * scale);
+  canvas.height = Math.round(h * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+function compressImageDataUrl(dataUrl, maxSide = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
 }
 
 function applyPhotoToField(fieldId, dataUrl, isFromCamera) {
@@ -2445,9 +2481,9 @@ async function loadDashboard() {
 }
 
 function dashFilter(filter, btn) {
-  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#screen-dashboard .filter-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  renderDash(filter);
+  loadDashboard(filter);
 }
 
 function renderDash(filter) {
@@ -2526,6 +2562,53 @@ function lookupKegiatanPiket(ids) {
   }).filter(Boolean).join(', ');
 }
 
+
+function escapeAttr(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function extractDriveFileId(url) {
+  const s = String(url || '');
+  let m = s.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  m = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  return '';
+}
+
+function toDriveThumbUrl(url, size = 180) {
+  const id = extractDriveFileId(url);
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w${size}` : url;
+}
+
+function getPrimaryPhotoUrlFromRow(r) {
+  const candidates = [
+    r._fotoThumb, r._foto, r.Foto,
+    r.FotoBBM, r.FotoTambahan, r.FotoKondisiKendaraan, r.FotoFollowUp,
+    r.FotoPiket, r.FotoSurat, r.FotoGenset
+  ];
+  return candidates.find(v => v && String(v).trim()) || '';
+}
+
+function getOpenPhotoUrlFromRow(r) {
+  const candidates = [
+    r._fotoOpen, r._foto, r.Foto,
+    r.FotoBBM, r.FotoTambahan, r.FotoKondisiKendaraan, r.FotoFollowUp,
+    r.FotoPiket, r.FotoSurat, r.FotoGenset
+  ];
+  return candidates.find(v => v && String(v).trim()) || '';
+}
+
+function getRowPhotoHtml(r) {
+  const thumbRaw = getPrimaryPhotoUrlFromRow(r);
+  const openRaw = getOpenPhotoUrlFromRow(r) || thumbRaw;
+  if (!thumbRaw) return '<div class="li-foto-placeholder">📷</div>';
+
+  const thumb = r._fotoThumb || toDriveThumbUrl(thumbRaw, 180);
+  const open = openRaw;
+  return `<img class="li-foto" loading="lazy" src="${escapeAttr(thumb)}" onclick="window.open('${escapeAttr(open)}','_blank')" onerror="this.outerHTML='<div class=&quot;li-foto-placeholder&quot;>📷</div>'">`;
+}
+
 // ── List View Data ────────────────────────────────────────────
 let listData = { security: [], driver: [], cs: [] };
 let listFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
@@ -2539,19 +2622,26 @@ function goList(role) {
   loadListData(role);
 }
 
-async function loadListData(role) {
+async function loadListData(role, filterOverride) {
   if (!guardRoleAccess(role)) return;
   const bodyId = { security: 'sec-list-body', driver: 'drv-list-body', cs: 'cs-list-body' };
   const el = document.getElementById(bodyId[role]);
-  el.innerHTML = '<div class="list-loading">Memuat data...</div>';
+  const filter = filterOverride || listFilter_active[role] || 'semua';
+  el.innerHTML = '<div class="list-loading">Memuat 15 data terbaru...</div>';
   try {
     const result = await fetchJsonWithRetry(
-      APPS_SCRIPT_URL + '?action=getData&role=' + role + '&token=' + encodeURIComponent(currentUser?.token || '') + '&t=' + Date.now(),
+      APPS_SCRIPT_URL
+        + '?action=getData'
+        + '&role=' + encodeURIComponent(role)
+        + '&filter=' + encodeURIComponent(filter)
+        + '&limit=15'
+        + '&token=' + encodeURIComponent(currentUser?.token || '')
+        + '&t=' + Date.now(),
       {},
       { retries: 2, timeoutMs: 30000, retryDelayMs: 800 }
     );
     listData[role] = result.rows || [];
-    renderList(role, listFilter_active[role]);
+    renderList(role, filter);
   } catch(e) {
     el.innerHTML = '<div class="list-loading">Gagal memuat data</div>';
   }
@@ -2562,7 +2652,7 @@ function listFilter(role, filter, btn) {
   const tabParent = btn.closest('.filter-tabs');
   tabParent.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  renderList(role, filter);
+  loadListData(role, filter);
 }
 
 function renderList(role, filter) {
@@ -2593,18 +2683,9 @@ function renderList(role, filter) {
     'Slave': 'Slave',
   };
 
-  const filtered = filter === 'semua' ? rows : rows.filter(r => {
-    const jk = r.JenisKegiatan || r.Kegiatan || '';
-    // Resolve nama berdasarkan role
-    let namaJk = jk;
-    if (role === 'cs') namaJk = lookupKegiatan(jk);
-    else if (role === 'driver') namaJk = lookupKegiatanDriver(jk);
-    const keyword = filterKeyMap[filter] || filter;
-    const csMap = csKegiatanMap[filter];
-    return jk === filter || jk === csMap
-      || jk.includes(keyword) || namaJk.includes(keyword)
-      || (csMap && (jk === csMap || namaJk === csMap));
-  });
+  // Data sudah difilter dan dibatasi 15 row terbaru dari Apps Script.
+  // Jangan filter ulang di browser agar hasil tetap benar walaupun master data belum sepenuhnya siap.
+  const filtered = rows;
 
   if (!filtered.length) {
     el.innerHTML = '<div class="list-loading">Belum ada data</div>';
@@ -2621,9 +2702,7 @@ function renderList(role, filter) {
     const fu   = (r.PerluFollowUp === 'Y' || r.PerluFollowUp === true)
       ? '<span class="badge badge-fu">Follow Up</span>'
       : '<span class="badge badge-ok">Selesai</span>';
-    const foto = r.Foto
-      ? `<img class="li-foto" src="${r.Foto}" onclick="window.open('${r.Foto}','_blank')" onerror="this.style.display='none'">`
-      : '<div class="li-foto-placeholder">📷</div>';
+    const foto = getRowPhotoHtml(r);
 
     let detail = '';
     if (role === 'security') {
@@ -2680,32 +2759,33 @@ function renderList(role, filter) {
 }
 
 // ── Dashboard real data ───────────────────────────────────────
-async function loadDashboard() {
-  document.getElementById('dash-list').innerHTML = '<div class="list-loading">Memuat data...</div>';
+async function loadDashboard(filter = 'semua') {
+  document.getElementById('dash-list').innerHTML = '<div class="list-loading">Memuat 15 data terbaru...</div>';
   try {
     const result = await fetchJsonWithRetry(
-      APPS_SCRIPT_URL + '?action=getData&token=' + encodeURIComponent(currentUser?.token || '') + '&t=' + Date.now(),
+      APPS_SCRIPT_URL
+        + '?action=getData'
+        + '&dashboardFilter=' + encodeURIComponent(filter)
+        + '&limit=15'
+        + '&token=' + encodeURIComponent(currentUser?.token || '')
+        + '&t=' + Date.now(),
       {},
       { retries: 2, timeoutMs: 30000, retryDelayMs: 800 }
     );
     dashData = result.rows || [];
-    const today = new Date().toDateString();
-    document.getElementById('dash-total').textContent = dashData.length;
-    document.getElementById('dash-fu').textContent = dashData.filter(d => d.PerluFollowUp === 'Y').length;
-    document.getElementById('dash-today').textContent = dashData.filter(d => new Date(d.Timestamp).toDateString() === today).length;
-    renderDash('semua');
+    const stats = result.stats || {};
+    document.getElementById('dash-total').textContent = stats.total ?? dashData.length;
+    document.getElementById('dash-fu').textContent = stats.followUp ?? dashData.filter(d => d.PerluFollowUp === 'Y').length;
+    document.getElementById('dash-today').textContent = stats.today ?? 0;
+    renderDash();
   } catch(e) {
     document.getElementById('dash-list').innerHTML = '<div class="list-loading">Gagal memuat data</div>';
   }
 }
 
-function renderDash(filter) {
+function renderDash() {
   const icons = { Security:'🛡️', Driver:'🚗', CS:'🧹' };
-  const filtered = dashData.filter(d => {
-    if (filter === 'semua') return true;
-    if (filter === 'followup') return d.PerluFollowUp === 'Y';
-    return (d._role||'').toLowerCase() === filter;
-  });
+  const filtered = dashData || [];
   const list = document.getElementById('dash-list');
   if (!filtered.length) { list.innerHTML = '<div class="list-loading">Tidak ada data</div>'; return; }
   list.innerHTML = filtered.map(d => {
@@ -2717,6 +2797,7 @@ function renderDash(filter) {
     else if (role === 'driver') jk = lookupKegiatanDriver(jkRaw);
     const nama = lookupNama(d.NamaPegawai);
     const fu   = d.PerluFollowUp === 'Y';
+    const foto = getRowPhotoHtml(d);
     return `
     <div class="list-item ${role}">
       <div class="li-row">
@@ -2728,6 +2809,7 @@ function renderDash(filter) {
           <div class="li-sub">${d._role} — ${jk}</div>
           <div class="li-meta">${ts}</div>
         </div>
+        ${foto}
       </div>
     </div>`;
   }).join('');
