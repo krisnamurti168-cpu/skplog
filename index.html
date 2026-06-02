@@ -440,6 +440,77 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   pointer-events: none;
 }
 
+
+/* ── List Meta (Search + Last Updated) ── */
+.list-meta {
+  padding: 0 20px 8px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--text3);
+}
+.list-meta-info { flex: 1; font-family: var(--mono); }
+.list-meta-refresh {
+  background: none; border: none; cursor: pointer;
+  color: var(--text2); padding: 4px 8px;
+  border-radius: var(--radius-sm); font-size: 12px;
+  display: flex; align-items: center; gap: 4px;
+}
+.list-meta-refresh:hover { background: var(--surface2); color: var(--text); }
+.list-meta-refresh.refreshing { animation: spin 0.7s linear infinite; }
+
+.list-search {
+  padding: 0 20px 12px;
+}
+.list-search input {
+  width: 100%; padding: 9px 14px 9px 36px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B6A66' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 12px center;
+  font-family: var(--font); font-size: 13px;
+  color: var(--text);
+}
+.list-search input:focus { outline: none; border-color: var(--text); }
+
+.load-more-wrap {
+  padding: 16px 20px;
+  text-align: center;
+}
+.load-more-btn {
+  width: 100%; padding: 11px 16px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 13px; font-family: var(--font);
+  font-weight: 500; transition: background .15s;
+}
+.load-more-btn:hover { background: var(--surface2); }
+.load-more-btn:disabled { opacity: .5; cursor: not-allowed; }
+.load-more-info {
+  font-size: 11px; color: var(--text3);
+  text-align: center; padding: 8px 0;
+  font-family: var(--mono);
+}
+
+/* ── Pull to Refresh ── */
+.ptr-indicator {
+  position: fixed; top: 0; left: 50%;
+  transform: translateX(-50%) translateY(-50px);
+  background: var(--surface); color: var(--text);
+  padding: 8px 16px; border-radius: 0 0 12px 12px;
+  border: 1px solid var(--border); border-top: none;
+  font-size: 12px; font-weight: 500;
+  z-index: 500; transition: transform .2s ease;
+  display: flex; align-items: center; gap: 6px;
+}
+.ptr-indicator.visible {
+  transform: translateX(-50%) translateY(0);
+}
+.ptr-indicator .ptr-icon {
+  display: inline-block;
+  transition: transform .2s ease;
+}
+.ptr-indicator.pulling .ptr-icon { transform: rotate(180deg); }
+.ptr-indicator.refreshing .ptr-icon { animation: spin 0.7s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
 </style>
 </head>
 <body>
@@ -1233,7 +1304,17 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button class="filter-tab" onclick="listFilter('security','Pengecekan Genset',this)">Genset</button>
     </div>
   </div>
+  <div class="list-search">
+    <input type="text" id="sec-search" placeholder="Cari nama pegawai atau detail..." oninput="onSearchInput('security', this.value)">
+  </div>
+  <div class="list-meta">
+    <span class="list-meta-info" id="sec-meta">—</span>
+    <button class="list-meta-refresh" onclick="refreshList('security')" title="Refresh data"><span id="sec-refresh-icon">⟳</span></button>
+  </div>
   <div class="log-list" id="sec-list-body"><div class="list-loading">Memuat data...</div></div>
+  <div class="load-more-wrap" id="sec-loadmore-wrap" style="display:none">
+    <button class="load-more-btn" onclick="loadMoreList('security')" id="sec-loadmore-btn">Muat lebih banyak</button>
+  </div>
 </div>
 
 <!-- ══ LIST DRIVER ════════════════════════════════════════════ -->
@@ -1251,7 +1332,17 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button class="filter-tab" onclick="listFilter('driver','Laporan Kondisi Kendaraan Dinas Roda Empat',this)">Kondisi</button>
     </div>
   </div>
+  <div class="list-search">
+    <input type="text" id="drv-search" placeholder="Cari nama driver atau kendaraan..." oninput="onSearchInput('driver', this.value)">
+  </div>
+  <div class="list-meta">
+    <span class="list-meta-info" id="drv-meta">—</span>
+    <button class="list-meta-refresh" onclick="refreshList('driver')" title="Refresh data"><span id="drv-refresh-icon">⟳</span></button>
+  </div>
   <div class="log-list" id="drv-list-body"><div class="list-loading">Memuat data...</div></div>
+  <div class="load-more-wrap" id="drv-loadmore-wrap" style="display:none">
+    <button class="load-more-btn" onclick="loadMoreList('driver')" id="drv-loadmore-btn">Muat lebih banyak</button>
+  </div>
 </div>
 
 <!-- ══ LIST CS ════════════════════════════════════════════════ -->
@@ -1270,7 +1361,17 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button class="filter-tab" onclick="listFilter('cs','Pemeliharaan Transportable Slave',this)">Slave</button>
     </div>
   </div>
+  <div class="list-search">
+    <input type="text" id="cs-search" placeholder="Cari nama pegawai atau detail..." oninput="onSearchInput('cs', this.value)">
+  </div>
+  <div class="list-meta">
+    <span class="list-meta-info" id="cs-meta">—</span>
+    <button class="list-meta-refresh" onclick="refreshList('cs')" title="Refresh data"><span id="cs-refresh-icon">⟳</span></button>
+  </div>
   <div class="log-list" id="cs-list-body"><div class="list-loading">Memuat data...</div></div>
+  <div class="load-more-wrap" id="cs-loadmore-wrap" style="display:none">
+    <button class="load-more-btn" onclick="loadMoreList('cs')" id="cs-loadmore-btn">Muat lebih banyak</button>
+  </div>
 </div>
 
 <!-- ══ SUCCESS ════════════════════════════════════════════════ -->
@@ -1297,6 +1398,13 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 </div>
 
 </div><!-- /app -->
+
+
+<!-- Pull to Refresh Indicator -->
+<div class="ptr-indicator" id="ptr-indicator">
+  <span class="ptr-icon">⬇</span>
+  <span id="ptr-text">Tarik untuk refresh</span>
+</div>
 
 <!-- Loading -->
 <div class="loading-overlay hidden" id="loading">
@@ -2024,7 +2132,8 @@ function go(screenId) {
   }
 
   const requiredRole = screenRoleMap[screenId];
-  if (requiredRole && currentUser && currentUser.role !== requiredRole) {
+  // Admin punya akses ke semua role, jadi bypass guard
+  if (requiredRole && currentUser && currentUser.role !== 'admin' && currentUser.role !== requiredRole) {
     showToast(`Akun ini hanya untuk role ${ROLE_LABEL[currentUser.role] || currentUser.role}`);
     screenId = 'screen-home';
   }
@@ -2621,39 +2730,97 @@ function getRowPhotoHtml(r) {
 // ── List View Data ────────────────────────────────────────────
 let listData = { security: [], driver: [], cs: [] };
 let listFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
+let listSearch_query = { security: '', driver: '', cs: '' };
+let listOffset = { security: 0, driver: 0, cs: 0 };
+let listTotal = { security: 0, driver: 0, cs: 0 };
+let listHasMore = { security: false, driver: false, cs: false };
+let listLastFetch = { security: 0, driver: 0, cs: 0 };
+const LIST_PAGE_SIZE = 15;
+
+const LIST_IDS = {
+  security: { body: 'sec-list-body', meta: 'sec-meta', refresh: 'sec-refresh-icon', loadmoreWrap: 'sec-loadmore-wrap', loadmoreBtn: 'sec-loadmore-btn', search: 'sec-search' },
+  driver:   { body: 'drv-list-body', meta: 'drv-meta', refresh: 'drv-refresh-icon', loadmoreWrap: 'drv-loadmore-wrap', loadmoreBtn: 'drv-loadmore-btn', search: 'drv-search' },
+  cs:       { body: 'cs-list-body',  meta: 'cs-meta',  refresh: 'cs-refresh-icon',  loadmoreWrap: 'cs-loadmore-wrap',  loadmoreBtn: 'cs-loadmore-btn',  search: 'cs-search' },
+};
 
 function goList(role) {
   if (!guardRoleAccess(role)) return;
   const screenMap = { security: 'screen-security-list', driver: 'screen-driver-list', cs: 'screen-cs-list' };
-  // Set origin form ke list view, jadi kalau user buka form lalu back, balik ke list
   formOrigin[role] = screenMap[role];
   go(screenMap[role]);
   loadListData(role);
 }
 
-async function loadListData(role, filterOverride) {
+async function loadListData(role, filterOverride, options) {
   if (!guardRoleAccess(role)) return;
-  const bodyId = { security: 'sec-list-body', driver: 'drv-list-body', cs: 'cs-list-body' };
-  const el = document.getElementById(bodyId[role]);
+  options = options || {};
+  const ids = LIST_IDS[role];
+  const el = document.getElementById(ids.body);
   const filter = filterOverride || listFilter_active[role] || 'semua';
-  el.innerHTML = '<div class="list-loading">Memuat 15 data terbaru...</div>';
+
+  // Reset offset kalau bukan load more
+  if (!options.append) {
+    listOffset[role] = 0;
+    listData[role] = [];
+    // Clear list sebelum fetch baru biar tidak ada data lama yang nempel
+    el.innerHTML = '<div class="list-loading">Memuat data...</div>';
+    setMeta(role, 'Memuat...');
+  } else {
+    // Load more: tambahkan loading indicator di bawah
+    const btn = document.getElementById(ids.loadmoreBtn);
+    if (btn) { btn.disabled = true; btn.textContent = 'Memuat...'; }
+  }
+
   try {
     const result = await fetchJsonWithRetry(
       APPS_SCRIPT_URL
         + '?action=getData'
         + '&role=' + encodeURIComponent(role)
         + '&filter=' + encodeURIComponent(filter)
-        + '&limit=15'
+        + '&limit=' + LIST_PAGE_SIZE
+        + '&offset=' + listOffset[role]
         + '&token=' + encodeURIComponent(currentUser?.token || '')
         + '&t=' + Date.now(),
       {},
       { retries: 2, timeoutMs: 30000, retryDelayMs: 800 }
     );
-    listData[role] = result.rows || [];
+
+    const newRows = result.rows || [];
+    if (options.append) {
+      listData[role] = [...(listData[role] || []), ...newRows];
+    } else {
+      listData[role] = newRows;
+    }
+    listTotal[role] = result.total || 0;
+    listHasMore[role] = !!result.hasMore;
+    listLastFetch[role] = Date.now();
+    listOffset[role] = (listData[role] || []).length;
+
     renderList(role, filter);
+    updateListMeta(role);
+    updateLoadMoreUI(role);
   } catch(e) {
-    el.innerHTML = '<div class="list-loading">Gagal memuat data</div>';
+    if (!options.append) {
+      el.innerHTML = '<div class="list-loading">Gagal memuat data</div>';
+    } else {
+      const btn = document.getElementById(ids.loadmoreBtn);
+      if (btn) { btn.disabled = false; btn.textContent = 'Muat lebih banyak'; }
+      showToast('Gagal memuat data tambahan');
+    }
   }
+}
+
+function loadMoreList(role) {
+  if (!listHasMore[role]) return;
+  loadListData(role, listFilter_active[role], { append: true });
+}
+
+async function refreshList(role) {
+  const ids = LIST_IDS[role];
+  const icon = document.getElementById(ids.refresh);
+  if (icon) icon.parentElement.classList.add('refreshing');
+  await loadListData(role);
+  if (icon) icon.parentElement.classList.remove('refreshing');
 }
 
 function listFilter(role, filter, btn) {
@@ -2661,43 +2828,102 @@ function listFilter(role, filter, btn) {
   const tabParent = btn.closest('.filter-tabs');
   tabParent.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
+  // Reset search saat ganti filter
+  const searchEl = document.getElementById(LIST_IDS[role].search);
+  if (searchEl) searchEl.value = '';
+  listSearch_query[role] = '';
   loadListData(role, filter);
+}
+
+function onSearchInput(role, query) {
+  listSearch_query[role] = String(query || '').trim().toLowerCase();
+  renderList(role, listFilter_active[role]);
+  updateListMeta(role);
+}
+
+function setMeta(role, text) {
+  const el = document.getElementById(LIST_IDS[role].meta);
+  if (el) el.textContent = text;
+}
+
+function updateListMeta(role) {
+  const total = listTotal[role] || 0;
+  const shown = (listData[role] || []).length;
+  const lastFetch = listLastFetch[role];
+  const searchQuery = listSearch_query[role];
+
+  let txt = '';
+  if (searchQuery) {
+    const matches = filterBySearchQuery(role).length;
+    txt = matches + ' cocok dari ' + shown + ' dimuat';
+  } else {
+    txt = shown + ' dari ' + total;
+  }
+  if (lastFetch) {
+    txt += ' • ' + formatRelativeTime(lastFetch);
+  }
+  setMeta(role, txt);
+}
+
+function formatRelativeTime(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 30000) return 'baru saja';
+  if (diff < 60000) return Math.floor(diff/1000) + 'd lalu';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm lalu';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'j lalu';
+  return new Date(ts).toLocaleString('id-ID', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+
+function updateLoadMoreUI(role) {
+  const ids = LIST_IDS[role];
+  const wrap = document.getElementById(ids.loadmoreWrap);
+  const btn = document.getElementById(ids.loadmoreBtn);
+  if (!wrap || !btn) return;
+
+  // Sembunyikan load more saat ada search aktif
+  if (listSearch_query[role]) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  if (listHasMore[role]) {
+    wrap.style.display = '';
+    btn.disabled = false;
+    const remaining = (listTotal[role] || 0) - (listData[role] || []).length;
+    btn.textContent = 'Muat lebih banyak (' + remaining + ' lagi)';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+function filterBySearchQuery(role) {
+  const q = listSearch_query[role];
+  const rows = listData[role] || [];
+  if (!q) return rows;
+  return rows.filter(r => {
+    const nama = lookupNama(r.NamaPegawai);
+    const kantor = r.Kantor || '';
+    const jkRaw = r.JenisKegiatan || r.Kegiatan || '';
+    let jk = jkRaw;
+    if (role === 'cs') jk = lookupKegiatan(jkRaw);
+    else if (role === 'driver') jk = lookupKegiatanDriver(jkRaw);
+    const detail = String(r.DetailKegiatanDilakukan || r.UraianKegiatan || r.KegiatanPiket || '');
+    const lokasi = lookupLokasi(r.Lokasi);
+    const kend = lookupKendaraan(r.KendaraanDinas);
+    const haystack = (nama + ' ' + kantor + ' ' + jk + ' ' + detail + ' ' + lokasi + ' ' + kend).toLowerCase();
+    return haystack.includes(q);
+  });
 }
 
 function renderList(role, filter) {
   const bodyId = { security: 'sec-list-body', driver: 'drv-list-body', cs: 'cs-list-body' };
   const el = document.getElementById(bodyId[role]);
-  const rows = listData[role] || [];
-
-  // Nama kegiatan lengkap untuk filter CS
-  const csKegiatanMap = {
-    'Monitoring': 'Monitoring Kebersihan & Pembersihan Rutin',
-    'KM': 'Pembersihan Rutin Kamar Mandi',
-    'Vakum': 'Kegiatan Vakum',
-    'Slave': 'Pemeliharaan Transportable Slave',
-  };
-
-  // Map filter pendek ke kata kunci yang ada di nama lengkap
-  const filterKeyMap = {
-    'BBM': 'BBM',
-    'Rekap': 'Rekapitulasi',
-    'Kondisi': 'Kondisi',
-    'Piket': 'Piket',
-    'Kendaraan': 'Pencatatan Kendaraan',
-    'Surat': 'Surat',
-    'Genset': 'Genset',
-    'Monitoring': 'Monitoring',
-    'KM': 'Kamar Mandi',
-    'Vakum': 'Vakum',
-    'Slave': 'Slave',
-  };
-
-  // Data sudah difilter dan dibatasi 15 row terbaru dari Apps Script.
-  // Jangan filter ulang di browser agar hasil tetap benar walaupun master data belum sepenuhnya siap.
-  const filtered = rows;
+  // Filter lokal dengan search query
+  const filtered = filterBySearchQuery(role);
 
   if (!filtered.length) {
-    el.innerHTML = '<div class="list-loading">Belum ada data</div>';
+    const isSearch = !!listSearch_query[role];
+    el.innerHTML = '<div class="list-loading">' + (isSearch ? 'Tidak ada hasil untuk pencarian' : 'Belum ada data') + '</div>';
     return;
   }
 
@@ -2822,6 +3048,80 @@ function renderDash() {
       </div>
     </div>`;
   }).join('');
+}
+
+
+// ── Pull to Refresh ──────────────────────────────────────────
+let ptrState = { startY: 0, currentY: 0, active: false, threshold: 80 };
+
+function getActiveListRole() {
+  const screenMap = { 'screen-security-list': 'security', 'screen-driver-list': 'driver', 'screen-cs-list': 'cs' };
+  const active = document.querySelector('.screen.active');
+  if (!active) return null;
+  return screenMap[active.id] || null;
+}
+
+function initPullToRefresh() {
+  const indicator = document.getElementById('ptr-indicator');
+  if (!indicator) return;
+
+  document.addEventListener('touchstart', e => {
+    // Hanya aktif kalau di screen list dan scroll posisi paling atas
+    const role = getActiveListRole();
+    if (!role) return;
+    if (window.scrollY > 5) return;
+    ptrState.startY = e.touches[0].clientY;
+    ptrState.active = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!ptrState.active) return;
+    ptrState.currentY = e.touches[0].clientY;
+    const diff = ptrState.currentY - ptrState.startY;
+    if (diff > 10) {
+      indicator.classList.add('visible');
+      if (diff > ptrState.threshold) {
+        indicator.classList.add('pulling');
+        document.getElementById('ptr-text').textContent = 'Lepas untuk refresh';
+      } else {
+        indicator.classList.remove('pulling');
+        document.getElementById('ptr-text').textContent = 'Tarik untuk refresh';
+      }
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', async e => {
+    if (!ptrState.active) return;
+    const diff = ptrState.currentY - ptrState.startY;
+    const role = getActiveListRole();
+    indicator.classList.remove('pulling');
+
+    if (diff > ptrState.threshold && role) {
+      indicator.classList.add('refreshing');
+      document.getElementById('ptr-text').textContent = 'Refreshing...';
+      try { await refreshList(role); } catch(e) {}
+      indicator.classList.remove('refreshing');
+    }
+
+    setTimeout(() => indicator.classList.remove('visible'), 200);
+    ptrState.active = false;
+    ptrState.startY = 0;
+    ptrState.currentY = 0;
+  });
+}
+
+// Auto-update timestamp "X menit lalu" tiap 30 detik
+setInterval(() => {
+  ['security', 'driver', 'cs'].forEach(role => {
+    if (listLastFetch[role]) updateListMeta(role);
+  });
+}, 30000);
+
+// Init PTR setelah DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPullToRefresh);
+} else {
+  initPullToRefresh();
 }
 
 </script>
