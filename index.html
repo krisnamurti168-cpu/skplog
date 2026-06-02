@@ -461,6 +461,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <option value="security">Security</option>
           <option value="driver">Driver</option>
           <option value="cs">CS</option>
+          <option value="admin">Admin</option>
         </select>
       </div>
 
@@ -1330,7 +1331,7 @@ const screenRoleMap = {
   'screen-security': 'security',
   'screen-security-list': 'security'
 };
-const ROLE_LABEL = { security: 'Security', driver: 'Driver', cs: 'CS' };
+const ROLE_LABEL = { security: 'Security', driver: 'Driver', cs: 'CS', admin: 'Admin' };
 
 // Track origin screen untuk back button context-aware
 let formOrigin = { cs: 'screen-home', driver: 'screen-home', security: 'screen-home' };
@@ -1739,9 +1740,11 @@ function updateAuthUI() {
       : '-';
   }
 
-  document.querySelectorAll('.role-card.security').forEach(el => el.classList.toggle('locked', !!currentUser && currentUser.role !== 'security'));
-  document.querySelectorAll('.role-card.driver').forEach(el => el.classList.toggle('locked', !!currentUser && currentUser.role !== 'driver'));
-  document.querySelectorAll('.role-card.cs').forEach(el => el.classList.toggle('locked', !!currentUser && currentUser.role !== 'cs'));
+  // Admin bisa akses semua role, jadi tidak ada yang dikunci
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  document.querySelectorAll('.role-card.security').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'security'));
+  document.querySelectorAll('.role-card.driver').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'driver'));
+  document.querySelectorAll('.role-card.cs').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'cs'));
 }
 
 function guardRoleAccess(role) {
@@ -1749,6 +1752,8 @@ function guardRoleAccess(role) {
     go('screen-login');
     return false;
   }
+  // Admin bisa akses semua role
+  if (currentUser.role === 'admin') return true;
   if (currentUser.role !== role) {
     showToast(`Akun ini hanya untuk role ${ROLE_LABEL[currentUser.role] || currentUser.role}`);
     return false;
@@ -1762,7 +1767,11 @@ function applyLoggedInUserToForms() {
   Object.entries(map).forEach(([role, selectId]) => {
     const el = document.getElementById(selectId);
     if (!el) return;
-    if (role === currentUser.role) {
+    // Admin: bisa pilih nama pegawai manapun, tidak dikunci
+    if (currentUser.role === 'admin') {
+      el.disabled = false;
+      el.value = '';
+    } else if (role === currentUser.role) {
       el.value = currentUser.pegawaiID;
       el.disabled = true;
     } else {
