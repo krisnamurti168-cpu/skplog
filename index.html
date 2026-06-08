@@ -2,11 +2,28 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+
+<!-- PWA meta tags -->
 <title>SKP Log — PPPK</title>
+<meta name="description" content="Aplikasi Log Kegiatan Harian PPPK Balmon Yogyakarta">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1A1916">
+<meta name="application-name" content="SKP Log">
+
+<!-- iOS PWA support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SKP Log">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1416,6 +1433,16 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
 <script>
 // ══════════════════════════════════════════════════════════════
+// PWA — Register Service Worker
+// ══════════════════════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
 // CONFIG — ganti URL ini setelah deploy Apps Script
 // ══════════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTJQn7x8v-ez-kYjcvBhAulv-yqvxZLb3udous2E1gzotyTQ23uxJpKV3DzQF7_JM/exec';
@@ -2556,6 +2583,101 @@ async function submitSecurity() {
   await doSubmit('submitSecurity', data, 'Data Security berhasil disimpan!');
 }
 
+
+// ── Reset Form setelah submit sukses ───────────────────────────
+function resetForm(role) {
+  const cfg = {
+    cs: {
+      prefix: 'cs-',
+      screenId: 'screen-cs',
+      photoFields: ['cs-foto'],
+      conditionalWraps: ['cs-kantor-wrap', 'cs-lokasi-wrap', 'cs-detail-wrap', 'cs-fu-detail'],
+      buttonWraps: ['cs-kantor-wrap', 'cs-fu-wrap'],
+    },
+    driver: {
+      prefix: 'drv-',
+      screenId: 'screen-driver',
+      photoFields: ['drv-foto-bbm', 'drv-foto-rekap', 'drv-foto-kondisi', 'drv-foto-fu'],
+      conditionalWraps: ['drv-bbm-wrap', 'drv-rekap-wrap', 'drv-kondisi-wrap', 'drv-fu-detail',
+                          'drv-tipe-keg-wrap', 'drv-nomor-st-wrap', 'drv-bbm-lainnya-wrap',
+                          'drv-tahap-keg-wrap', 'drv-odo-awal-wrap', 'drv-odo-akhir-wrap'],
+      buttonWraps: ['drv-tipe-keg-wrap', 'drv-fu-wrap', 'drv-tahap-keg-wrap'],
+    },
+    security: {
+      prefix: 'sec-',
+      screenId: 'screen-security',
+      photoFields: ['sec-foto-piket', 'sec-foto-surat', 'sec-foto-genset', 'sec-foto-fu'],
+      conditionalWraps: ['sec-piket-wrap', 'sec-kendaraan-wrap', 'sec-surat-wrap', 'sec-genset-wrap',
+                          'sec-fu-detail', 'sec-shift-lainnya-wrap', 'sec-detail-kejadian-wrap',
+                          'sec-jam-masuk-wrap', 'sec-jam-keluar-wrap', 'sec-dinas-wrap',
+                          'sec-manual-wrap', 'sec-genset-foto-wrap'],
+      buttonWraps: ['sec-jenis-keg-wrap', 'sec-fu-wrap', 'sec-kejadian-wrap',
+                     'sec-status-kend-wrap', 'sec-tipe-kend-wrap',
+                     'sec-accu-wrap', 'sec-radiator-wrap', 'sec-status-pengiriman-wrap'],
+    },
+  };
+
+  const c = cfg[role];
+  if (!c) return;
+
+  // 1. Reset semua input/select/textarea dengan prefix sesuai role
+  document.querySelectorAll('[id^="' + c.prefix + '"]').forEach(el => {
+    const tag = el.tagName;
+    if (tag === 'INPUT') {
+      const t = el.type;
+      if (t === 'checkbox' || t === 'radio') el.checked = false;
+      else el.value = '';
+    } else if (tag === 'SELECT' || tag === 'TEXTAREA') {
+      el.value = '';
+    }
+  });
+
+  // 2. Set tanggal ke hari ini
+  const tgl = document.getElementById(c.prefix + 'tanggal');
+  if (tgl) tgl.value = new Date().toISOString().slice(0, 10);
+
+  // 3. Reset state objects
+  if (role === 'cs') {
+    csState = { kegiatan: '', kantor: '', lokasi: '', fu: 'N' };
+  } else if (role === 'driver') {
+    drvState = { fu: 'N', tipeKeg: '' };
+  } else if (role === 'security') {
+    secState = { kantor: '', jenisKeg: '', statusKend: '', tipeKend: '',
+                 kondisiAccu: '', kondisiRadiator: '', fu: 'N', kejadian: 'N', statusSurat: 'Belum' };
+  }
+
+  // 4. Reset visual active class di button groups
+  c.buttonWraps.forEach(wrapId => {
+    document.querySelectorAll('#' + wrapId + ' .enum-btn').forEach(b => b.classList.remove('active'));
+  });
+
+  // 5. Hide semua conditional wrappers
+  c.conditionalWraps.forEach(wrapId => {
+    const el = document.getElementById(wrapId);
+    if (el) el.classList.add('hidden');
+  });
+
+  // 6. Reset photo previews
+  c.photoFields.forEach(id => {
+    const wrap = document.getElementById(id + '-preview-wrap');
+    if (wrap) wrap.classList.add('photo-hidden');
+    const hidden = document.getElementById(id);
+    if (hidden) hidden.value = '';
+    const file = document.getElementById(id + '-file');
+    if (file) file.value = '';
+  });
+
+  // 7. Reset checkbox lists (detail kegiatan, uraian, dll)
+  document.querySelectorAll('#' + c.screenId + ' .checkbox-group input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+  });
+
+  // 8. Re-apply user terkunci (nama pegawai untuk non-admin)
+  if (typeof applyLoggedInUserToForms === 'function') {
+    applyLoggedInUserToForms();
+  }
+}
+
 // ── Submit Handler ────────────────────────────────────────────
 let lastSubmitRole = null;
 async function doSubmit(action, data, successMsg) {
@@ -2572,6 +2694,8 @@ async function doSubmit(action, data, successMsg) {
     setLoading(false);
     if (result.success) {
       document.getElementById('success-msg').textContent = successMsg;
+      // Reset form setelah sukses agar nanti dibuka lagi sudah bersih
+      if (lastSubmitRole) resetForm(lastSubmitRole);
       go('screen-success');
     } else {
       showToast('Gagal menyimpan: ' + (result.error || 'Unknown error'));
@@ -2626,58 +2750,126 @@ function renderDash(filter) {
 }
 
 // ── Lookup helpers ────────────────────────────────────────────
+// Helper: normalize ID/string untuk lookup
+function _s(v) { return String(v == null ? '' : v).trim(); }
+
 function lookupNama(id) {
-  if (!id) return '-';
-  const p = (masterData.pegawai||[]).find(x => x.PegawaiID === id || x.Nama === id);
-  return p ? p.Nama : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const p = (masterData.pegawai||[]).find(x =>
+      _s(x.PegawaiID) === s || _s(x.Nama) === s
+    );
+    return p ? _s(p.Nama) : s;
+  } catch(e) { return s; }
 }
+
 function lookupKegiatan(id) {
-  if (!id) return '-';
-  const k = (masterData.jenisKegiatanCS||[]).find(x => x.KegiatanID === id || x.NamaKegiatan === id);
-  return k ? k.NamaKegiatan : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const k = (masterData.jenisKegiatanCS||[]).find(x =>
+      _s(x.KegiatanID) === s || _s(x.NamaKegiatan) === s
+    );
+    return k ? _s(k.NamaKegiatan) : s;
+  } catch(e) { return s; }
 }
+
 function lookupKegiatanDriver(id) {
-  if (!id) return '-';
-  // Driver pakai prefix KD00x untuk JenisKegiatan (sama dengan KendaraanDinas)
-  // Master kolomnya bisa: KegiatanDriverID atau KegiatanID
-  const k = (masterData.jenisKegiatanDriver||[]).find(x =>
-    x.KegiatanDriverID === id || x.KegiatanID === id || x.NamaKegiatan === id
-  );
-  return k ? k.NamaKegiatan : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const k = (masterData.jenisKegiatanDriver||[]).find(x =>
+      _s(x.KegiatanDriverID) === s ||
+      _s(x.KegiatanID) === s ||
+      _s(x.NamaKegiatan) === s
+    );
+    return k ? _s(k.NamaKegiatan) : s;
+  } catch(e) { return s; }
 }
+
 function lookupLokasi(id) {
-  if (!id) return '-';
-  const l = (masterData.lokasi||[]).find(x => x.LokasiID === (id||'').trim());
-  return l ? l.NamaLokasi : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const l = (masterData.lokasi||[]).find(x =>
+      _s(x.LokasiID) === s || _s(x.NamaLokasi) === s
+    );
+    return l ? _s(l.NamaLokasi) : s;
+  } catch(e) { return s; }
 }
+
 function lookupDetailKegiatan(ids) {
-  if (!ids) return '-';
-  return ids.split(',').map(id => {
-    const d = (masterData.detailKegiatan||[]).find(x => x.DetailKegiatanID === id.trim());
-    return d ? d.NamaDetailKegiatan : id.trim();
-  }).filter(Boolean).join(', ');
+  const s = _s(ids);
+  if (!s) return '-';
+  try {
+    return s.split(',').map(id => {
+      const t = _s(id);
+      const d = (masterData.detailKegiatan||[]).find(x => _s(x.DetailKegiatanID) === t);
+      return d ? _s(d.NamaDetailKegiatan) : t;
+    }).filter(Boolean).join(', ');
+  } catch(e) { return s; }
 }
+
 function lookupKendaraan(id) {
-  if (!id) return '-';
-  // Coba exact match dulu
-  let k = (masterData.kendaraanDinas||[]).find(x => x.KendaraanID === id || x.NamaKendaraan === id);
-  if (!k) {
-    // Coba match plat nomor
-    k = (masterData.kendaraanDinas||[]).find(x => x.Plat && x.Plat.replace(/\s/g,'').toLowerCase() === id.replace(/\s/g,'').toLowerCase());
-  }
-  return k ? k.NamaKendaraan + ' (' + k.Plat + ')' : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    let k = (masterData.kendaraanDinas||[]).find(x =>
+      _s(x.KendaraanID) === s ||
+      _s(x.NamaKendaraan) === s
+    );
+    if (!k) {
+      // Match plat nomor (normalize spasi)
+      const sNorm = s.replace(/\s/g, '').toLowerCase();
+      k = (masterData.kendaraanDinas||[]).find(x => {
+        const plat = _s(x.Plat).replace(/\s/g, '').toLowerCase();
+        return plat && plat === sNorm;
+      });
+    }
+    if (k) {
+      const plat = _s(k.Plat);
+      return _s(k.NamaKendaraan) + (plat ? ' (' + plat + ')' : '');
+    }
+    return s;
+  } catch(e) { return s; }
 }
+
 function lookupKeperluan(id) {
-  if (!id) return '-';
-  const k = (masterData.keperluanDriver||[]).find(x => x.KepID === id || x.NamaKeperluan === id);
-  return k ? k.NamaKeperluan : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const k = (masterData.keperluanDriver||[]).find(x =>
+      _s(x.KepID) === s ||
+      _s(x.KeperluanID) === s ||
+      _s(x.NamaKeperluan) === s ||
+      _s(x.Keperluan) === s
+    );
+    return k ? _s(k.NamaKeperluan || k.Keperluan) : s;
+  } catch(e) { return s; }
 }
+
 function lookupKegiatanPiket(ids) {
-  if (!ids) return '-';
-  return ids.split(',').map(id => {
-    const k = (masterData.kegiatanPiket||[]).find(x => x.KegiatanPiketID === id.trim());
-    return k ? k.NamaKegiatanPiket : id.trim();
-  }).filter(Boolean).join(', ');
+  const s = _s(ids);
+  if (!s) return '-';
+  try {
+    return s.split(',').map(id => {
+      const t = _s(id);
+      const k = (masterData.kegiatanPiket||[]).find(x =>
+        _s(x.KegiatanPiketID) === t ||
+        _s(x.NamaKegiatanPiket) === t
+      );
+      return k ? _s(k.NamaKegiatanPiket) : t;
+    }).filter(Boolean).join(', ');
+  } catch(e) { return s; }
+}
+
+// Helper untuk ambil field dengan multiple kemungkinan nama kolom
+function pick(row, ...keys) {
+  for (const k of keys) {
+    if (row[k] != null && row[k] !== '') return row[k];
+  }
+  return '';
 }
 
 
@@ -2954,18 +3146,25 @@ function renderList(role, filter) {
         detail = `Accu: ${r.KondisiAccu||'-'} &bull; Radiator: ${r.KondisiRadiator||'-'} &bull; BBM: ${r.StokBBMGenset||'-'}`;
       }
     } else if (role === 'driver') {
-      // jkRaw bisa kode (KD001/002/003) atau nama. Resolve dulu.
       const namaJk = lookupKegiatanDriver(jkRaw);
-      const kend = lookupKendaraan(r.KendaraanDinas);
-      const kep  = lookupKeperluan(r.KegiatanBBM);
+      // Coba beberapa kemungkinan nama kolom kendaraan
+      const kendRaw = pick(r, 'KendaraanDinas', 'Kendaraan Dinas', 'KendaraanID', 'Kendaraan');
+      const kend = kendRaw ? lookupKendaraan(kendRaw) : '-';
+      // Coba beberapa kemungkinan nama kolom keperluan/kegiatan BBM
+      const kepRaw = pick(r, 'KegiatanBBM', 'Kegiatan BBM', 'KeperluanBBM', 'Keperluan');
+      const kep = kepRaw ? lookupKeperluan(kepRaw) : '-';
+      const nominal = Number(pick(r, 'NominalBBM', 'Nominal BBM', 'Nominal') || 0);
+      const nominalStr = isFinite(nominal) ? nominal.toLocaleString('id-ID') : '0';
+
       if (namaJk.includes('BBM')) {
-        detail = `${kend} &bull; Rp ${Number(r.NominalBBM||0).toLocaleString('id-ID')} &bull; ${kep}`;
+        detail = `${kend} &bull; Rp ${nominalStr} &bull; ${kep}`;
       } else if (namaJk.includes('Rekapitulasi')) {
-        const tahap = r.TahapKegiatan || '-';
-        const odo = r.OdometerAwal || r.OdometerAkhir || '-';
+        const tahap = pick(r, 'TahapKegiatan', 'Tahap') || '-';
+        const odo = pick(r, 'OdometerAwal', 'OdometerAkhir', 'Odometer') || '-';
         detail = `${kend} &bull; ${tahap} &bull; Odo: ${odo}`;
       } else if (namaJk.includes('Kondisi')) {
-        detail = `${kend} &bull; Odo: ${r.OdometerValue||'-'} km`;
+        const odoVal = pick(r, 'OdometerValue', 'Odometer') || '-';
+        detail = `${kend} &bull; Odo: ${odoVal} km`;
       } else {
         detail = `${kend}`;
       }
