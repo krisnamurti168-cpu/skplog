@@ -2,11 +2,13 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+
 <title>SKP Log — PPPK</title>
+<meta name="description" content="Aplikasi Log Kegiatan Harian PPPK Balmon Yogyakarta">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1034,25 +1036,10 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <label>Kegiatan Piket ✓</label>
         <div class="checkbox-group" id="sec-piket-list"></div>
       </div>
-      <div class="form-group">
-        <label>Keterangan</label>
-        <div class="enum-group">
-          <button class="enum-btn" onclick="enumSelect(this,'sec-ket-piket')">Baik dan Lengkap</button>
-          <button class="enum-btn" onclick="enumSelect(this,'sec-ket-piket')">Aman</button>
-          <button class="enum-btn" onclick="enumSelect(this,'sec-ket-piket')">Ada Kejadian</button>
-        </div>
-        <input type="hidden" id="sec-ket-piket">
-      </div>
-      <div class="form-group">
-        <label>Kejadian Khusus?</label>
-        <div class="enum-group">
-          <button class="enum-btn active" id="sec-kej-n" onclick="secSetKejadian('N')">Tidak</button>
-          <button class="enum-btn" id="sec-kej-y" onclick="secSetKejadian('Y')">Ya</button>
-        </div>
-      </div>
-      <div class="form-group hidden" id="sec-kejadian-wrap">
-        <label>Detail Kejadian</label>
-        <textarea id="sec-detail-kejadian" placeholder="Tulis detail kejadian..."></textarea>
+      <!-- Free text untuk pilihan "Lainnya" di Kegiatan Piket -->
+      <div class="form-group hidden" id="sec-piket-lainnya-wrap">
+        <label>Kegiatan Piket Lainnya</label>
+        <input type="text" id="sec-piket-lainnya" placeholder="Tulis kegiatan piket lainnya...">
       </div>
       <div class="form-group">
         <label>Foto <span class="req">*</span></label>
@@ -1117,13 +1104,25 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <label>Nama Sopir</label>
         <input type="text" id="sec-nama-sopir" placeholder="Nama sopir/pengemudi">
       </div>
-      <div class="form-group">
-        <label>Keperluan</label>
-        <select id="sec-keperluan"><option value="">— Pilih —</option></select>
+      <!-- BBM Tersisa: hanya untuk kendaraan MASUK -->
+      <div class="form-group hidden" id="sec-bbm-tersisa-wrap">
+        <label>BBM Tersisa</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="secSetBBMTersisa('0-30%',this)">0-30%</button>
+          <button class="enum-btn" onclick="secSetBBMTersisa('30-50%',this)">30-50%</button>
+          <button class="enum-btn" onclick="secSetBBMTersisa('50-75%',this)">50-75%</button>
+          <button class="enum-btn" onclick="secSetBBMTersisa('75-100%',this)">75-100%</button>
+        </div>
+        <input type="hidden" id="sec-bbm-tersisa">
       </div>
-      <div class="form-group">
-        <label>Keterangan</label>
-        <input type="text" id="sec-ket-kendaraan" placeholder="Keterangan tambahan...">
+      <!-- Keperluan: hanya untuk kendaraan KELUAR -->
+      <div class="form-group hidden" id="sec-keperluan-wrap">
+        <label>Keperluan</label>
+        <select id="sec-keperluan" onchange="secOnKeperluan()"><option value="">— Pilih —</option></select>
+      </div>
+      <div class="form-group hidden" id="sec-keperluan-lainnya-wrap">
+        <label>Keperluan Lainnya</label>
+        <input type="text" id="sec-keperluan-lainnya" placeholder="Tulis keperluan lainnya...">
       </div>
     </div>
 
@@ -1202,7 +1201,13 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <div class="form-group">
         <label>Stok BBM Genset</label>
-        <input type="text" id="sec-stok-bbm" placeholder="Contoh: 75% / Penuh / Hampir habis">
+        <div class="enum-group">
+          <button class="enum-btn" onclick="secSetStokBBM('0-30%',this)">0-30%</button>
+          <button class="enum-btn" onclick="secSetStokBBM('30-50%',this)">30-50%</button>
+          <button class="enum-btn" onclick="secSetStokBBM('50-75%',this)">50-75%</button>
+          <button class="enum-btn" onclick="secSetStokBBM('75-100%',this)">75-100%</button>
+        </div>
+        <input type="hidden" id="sec-stok-bbm">
       </div>
       <div class="form-group hidden" id="sec-foto-genset-wrap">
         <label>Foto Kondisi Genset <span class="req">*</span></label>
@@ -1226,7 +1231,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <hr class="divider">
     <span class="divider-label">Follow Up</span>
     <div class="form-group">
-      <label>Perlu Follow Up?</label>
+      <label>Perlu Follow Up / Ada Kejadian Khusus?</label>
       <div class="enum-group">
         <button class="enum-btn active" id="sec-fu-n" onclick="secSetFU('N')">Tidak</button>
         <button class="enum-btn" id="sec-fu-y" onclick="secSetFU('Y')">Ya</button>
@@ -2441,7 +2446,7 @@ function secUpdatePiketList() {
   const container = document.getElementById('sec-piket-list');
   if (!container) return;
   const filtered = (masterData.kegiatanPiket || []).filter(k =>
-    !secState.kantor || k.Kantor.includes(secState.kantor)
+    !secState.kantor || (k.Kantor && k.Kantor.includes(secState.kantor))
   );
   container.innerHTML = '';
   filtered.forEach(k => {
@@ -2451,6 +2456,25 @@ function secUpdatePiketList() {
     div.onclick = () => { const cb = div.querySelector('input'); cb.checked = !cb.checked; div.classList.toggle('checked', cb.checked); };
     container.appendChild(div);
   });
+
+  // Tambah opsi "Lainnya" di akhir — saat dicentang, munculkan free text
+  const lainnya = document.createElement('div');
+  lainnya.className = 'checkbox-item';
+  lainnya.innerHTML = `<input type="checkbox" value="__LAINNYA__" id="sec-piket-lainnya-cb"><span>Lainnya (tulis sendiri)</span>`;
+  lainnya.onclick = (e) => {
+    // Hindari double-toggle kalau user klik di checkbox langsung
+    if (e.target.tagName !== 'INPUT') {
+      const cb = lainnya.querySelector('input');
+      cb.checked = !cb.checked;
+    }
+    const cb = lainnya.querySelector('input');
+    lainnya.classList.toggle('checked', cb.checked);
+    document.getElementById('sec-piket-lainnya-wrap').classList.toggle('hidden', !cb.checked);
+    if (!cb.checked) {
+      document.getElementById('sec-piket-lainnya').value = '';
+    }
+  };
+  container.appendChild(lainnya);
 }
 
 function secShiftLainnya(btn) {
@@ -2472,6 +2496,50 @@ function secSetStatusKend(v, btn) {
   btn.classList.add('active');
   document.getElementById('sec-jam-masuk-wrap').classList.toggle('hidden', v !== 'Masuk');
   document.getElementById('sec-jam-keluar-wrap').classList.toggle('hidden', v !== 'Keluar');
+  // BBM Tersisa hanya untuk Masuk; Keperluan hanya untuk Keluar
+  const bbmWrap = document.getElementById('sec-bbm-tersisa-wrap');
+  const kepWrap = document.getElementById('sec-keperluan-wrap');
+  const kepLainWrap = document.getElementById('sec-keperluan-lainnya-wrap');
+  if (bbmWrap) bbmWrap.classList.toggle('hidden', v !== 'Masuk');
+  if (kepWrap) kepWrap.classList.toggle('hidden', v !== 'Keluar');
+  // Reset Keperluan Lainnya saat ganti status
+  if (v !== 'Keluar') {
+    if (kepLainWrap) kepLainWrap.classList.add('hidden');
+    const kepSel = document.getElementById('sec-keperluan');
+    if (kepSel) kepSel.value = '';
+    const kepLain = document.getElementById('sec-keperluan-lainnya');
+    if (kepLain) kepLain.value = '';
+  }
+  // Reset BBM Tersisa saat ganti ke Keluar
+  if (v !== 'Masuk') {
+    const bbm = document.getElementById('sec-bbm-tersisa');
+    if (bbm) bbm.value = '';
+    if (bbmWrap) bbmWrap.querySelectorAll('.enum-btn.active').forEach(b => b.classList.remove('active'));
+  }
+}
+
+function secSetBBMTersisa(v, btn) {
+  btn.closest('.enum-group').querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sec-bbm-tersisa').value = v;
+}
+
+function secSetStokBBM(v, btn) {
+  btn.closest('.enum-group').querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sec-stok-bbm').value = v;
+}
+
+function secOnKeperluan() {
+  const sel = document.getElementById('sec-keperluan');
+  const txt = (sel.options[sel.selectedIndex] || {}).text || '';
+  const isLainnya = txt.toLowerCase().includes('lainnya') || sel.value.toLowerCase().includes('lainnya');
+  const wrap = document.getElementById('sec-keperluan-lainnya-wrap');
+  if (wrap) wrap.classList.toggle('hidden', !isLainnya);
+  if (!isLainnya) {
+    const t = document.getElementById('sec-keperluan-lainnya');
+    if (t) t.value = '';
+  }
 }
 
 function secSetTipeKend(v, btn) {
@@ -2509,10 +2577,27 @@ async function submitSecurity() {
   if (!val('sec-pegawai')) { showToast('Pilih nama pegawai dulu'); return; }
   if (!val('sec-kegiatan')) { showToast('Pilih jenis kegiatan'); return; }
 
-  const kegiatanPiketChecked = [...document.querySelectorAll('#sec-piket-list input:checked')].map(cb => {
+  // Ambil kegiatan piket yang dicentang + handle opsi "Lainnya"
+  const piketCheckedItems = [...document.querySelectorAll('#sec-piket-list input:checked')];
+  const piketNames = piketCheckedItems.map(cb => {
+    if (cb.value === '__LAINNYA__') {
+      const lainnyaText = (val('sec-piket-lainnya') || '').trim();
+      return lainnyaText ? ('Lainnya: ' + lainnyaText) : '';
+    }
     const kp = masterData.kegiatanPiket?.find(k => k.KegiatanPiketID === cb.value);
     return kp?.NamaKegiatanPiket || cb.value;
-  }).join(', ');
+  }).filter(Boolean);
+  const kegiatanPiketChecked = piketNames.join(', ');
+
+  // Keperluan: gabungkan jika user pilih "Lainnya"
+  const keperluanRaw = val('sec-keperluan');
+  let keperluanFinal = keperluanRaw;
+  const kepLain = (val('sec-keperluan-lainnya') || '').trim();
+  if (kepLain && keperluanRaw) {
+    const opt = document.getElementById('sec-keperluan').options[document.getElementById('sec-keperluan').selectedIndex];
+    const optText = (opt?.text || '').toLowerCase();
+    if (optText.includes('lainnya')) keperluanFinal = 'Lainnya: ' + kepLain;
+  }
 
   const data = {
     tanggal: val('sec-tanggal'),
@@ -2522,9 +2607,6 @@ async function submitSecurity() {
     shift: val('sec-shift'),
     shiftLainnya: val('sec-shift-lainnya'),
     kegiatanPiket: kegiatanPiketChecked,
-    keteranganPiket: val('sec-ket-piket'),
-    kejadianKhusus: secState.kejadian,
-    detailKejadian: val('sec-detail-kejadian'),
     statusKendaraan: secState.statusKend,
     jamMasuk: val('sec-jam-masuk'),
     jamKeluar: val('sec-jam-keluar'),
@@ -2534,8 +2616,8 @@ async function submitSecurity() {
     jenisKendaraanManual: val('sec-jenis-kend-manual'),
     platNomor: val('sec-plat-nomor'),
     namaSopirManual: val('sec-nama-sopir'),
-    keperluan: val('sec-keperluan'),
-    keteranganKendaraan: val('sec-ket-kendaraan'),
+    keperluan: secState.statusKend === 'Keluar' ? keperluanFinal : '',
+    bbmTersisaKendaraan: secState.statusKend === 'Masuk' ? val('sec-bbm-tersisa') : '',
     jenisPaket: val('sec-jenis-paket'),
     pengirim: val('sec-pengirim'),
     penerima: val('sec-penerima'),
@@ -2556,6 +2638,111 @@ async function submitSecurity() {
   await doSubmit('submitSecurity', data, 'Data Security berhasil disimpan!');
 }
 
+
+// ── Reset Form setelah submit sukses ───────────────────────────
+// Versi aman: pakai try-catch, tidak panggil function lain yang berpotensi crash.
+function resetForm(role) {
+  try {
+    const cfg = {
+      cs: { prefix: 'cs-', screenId: 'screen-cs' },
+      driver: { prefix: 'drv-', screenId: 'screen-driver' },
+      security: { prefix: 'sec-', screenId: 'screen-security' },
+    };
+    const c = cfg[role];
+    if (!c) return;
+
+    // 1. Reset semua input/select/textarea dengan prefix sesuai role
+    document.querySelectorAll('[id^="' + c.prefix + '"]').forEach(el => {
+      try {
+        const tag = el.tagName;
+        if (tag === 'INPUT') {
+          const t = el.type;
+          if (t === 'checkbox' || t === 'radio') el.checked = false;
+          else el.value = '';
+        } else if (tag === 'SELECT' || tag === 'TEXTAREA') {
+          el.value = '';
+        }
+      } catch(e) {}
+    });
+
+    // 2. Tanggal kembali ke hari ini
+    const tgl = document.getElementById(c.prefix + 'tanggal');
+    if (tgl) {
+      try { tgl.value = new Date().toISOString().slice(0, 10); } catch(e) {}
+    }
+
+    // 3. Reset state object
+    if (role === 'cs') {
+      csState = { kegiatan: '', kantor: '', lokasi: '', fu: 'N' };
+    } else if (role === 'driver') {
+      drvState = { fu: 'N', tipeKeg: '' };
+    } else if (role === 'security') {
+      secState = { kantor: '', jenisKeg: '', statusKend: '', tipeKend: '',
+                   kondisiAccu: '', kondisiRadiator: '', fu: 'N', kejadian: 'N', statusSurat: 'Belum' };
+    }
+
+    // 4. Reset visual: hapus class 'active' & 'checked' di dalam screen
+    const screen = document.getElementById(c.screenId);
+    if (screen) {
+      screen.querySelectorAll('.enum-btn.active').forEach(b => b.classList.remove('active'));
+      screen.querySelectorAll('.checkbox-item.checked').forEach(b => b.classList.remove('checked'));
+      // Re-activate default button (FU = Tidak)
+      const fuN = screen.querySelector('#' + c.prefix + 'fu-n');
+      if (fuN) fuN.classList.add('active');
+    }
+
+    // 5. Hide semua conditional sections — wrap class "hidden"
+    if (screen) {
+      // Section utama (Piket/Kendaraan/Surat/Genset/BBM/Rekap/Kondisi)
+      screen.querySelectorAll('[id$="-fields"]').forEach(el => el.classList.add('hidden'));
+      // Wrap conditional individual
+      screen.querySelectorAll('[id$="-wrap"].hidden').forEach(el => el.classList.add('hidden'));
+      // FU details
+      const fuFields = document.getElementById(c.prefix + 'fu-fields');
+      if (fuFields) fuFields.classList.add('hidden');
+    }
+
+    // 6. Reset photo preview & hidden value
+    const photoFields = {
+      cs: ['cs-foto'],
+      driver: ['drv-foto-bbm', 'drv-foto-rekap', 'drv-foto-kondisi', 'drv-foto-fu'],
+      security: ['sec-foto-piket', 'sec-foto-surat', 'sec-foto-genset', 'sec-foto-fu'],
+    };
+    (photoFields[role] || []).forEach(id => {
+      try {
+        const wrap = document.getElementById(id + '-preview-wrap');
+        if (wrap) wrap.classList.add('photo-hidden');
+        const file = document.getElementById(id + '-file');
+        if (file) file.value = '';
+      } catch(e) {}
+    });
+
+    // 7. Reset checkbox lists (Detail Kegiatan, Uraian, Item, dll)
+    if (screen) {
+      screen.querySelectorAll('.checkbox-group input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+      });
+    }
+
+    // 8. Set nama pegawai ke session user (kalau bukan admin)
+    // Tidak panggil applyLoggedInUserToForms() untuk menghindari side effect
+    try {
+      const namaSelect = document.getElementById(c.prefix + 'pegawai');
+      if (namaSelect && currentUser) {
+        if (currentUser.role === 'admin') {
+          namaSelect.value = '';
+          namaSelect.disabled = false;
+        } else {
+          namaSelect.value = currentUser.pegawaiID || '';
+          namaSelect.disabled = true;
+        }
+      }
+    } catch(e) {}
+  } catch(e) {
+    console.warn('resetForm error:', e);
+  }
+}
+
 // ── Submit Handler ────────────────────────────────────────────
 let lastSubmitRole = null;
 async function doSubmit(action, data, successMsg) {
@@ -2572,6 +2759,8 @@ async function doSubmit(action, data, successMsg) {
     setLoading(false);
     if (result.success) {
       document.getElementById('success-msg').textContent = successMsg;
+      // Reset form supaya saat dibuka lagi sudah bersih (aman dengan try-catch)
+      if (lastSubmitRole) resetForm(lastSubmitRole);
       go('screen-success');
     } else {
       showToast('Gagal menyimpan: ' + (result.error || 'Unknown error'));
@@ -2583,101 +2772,133 @@ async function doSubmit(action, data, successMsg) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────
-async function loadDashboard() {
-  // Demo data untuk dashboard
-  dashData = [
-    { role:'Security', nama:'Guridno', kegiatan:'Piket Keamanan', waktu:'Hari ini, 09:53', fu: false },
-    { role:'Driver',   nama:'Agus Mustofa', kegiatan:'Rekapitulasi Penggunaan Kendaraan', waktu:'Hari ini, 08:28', fu: false },
-    { role:'CS',       nama:'Sugeng Dumadi', kegiatan:'Monitoring Kebersihan', waktu:'Hari ini, 08:00', fu: true },
-    { role:'Security', nama:'Harsana Utama', kegiatan:'Pencatatan Kendaraan', waktu:'Kemarin, 14:00', fu: false },
-    { role:'Driver',   nama:'Aan Rusmanto', kegiatan:'Penggunaan BBM', waktu:'Kemarin, 07:30', fu: false },
-  ];
-  document.getElementById('dash-total').textContent = dashData.length;
-  document.getElementById('dash-fu').textContent = dashData.filter(d=>d.fu).length;
-  document.getElementById('dash-today').textContent = dashData.filter(d=>d.waktu.startsWith('Hari ini')).length;
-  renderDash('semua');
-}
-
 function dashFilter(filter, btn) {
   document.querySelectorAll('#screen-dashboard .filter-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   loadDashboard(filter);
 }
 
-function renderDash(filter) {
-  const icons = { Security:'🛡️', Driver:'🚗', CS:'🧹' };
-  const filtered = dashData.filter(d => {
-    if (filter === 'semua') return true;
-    if (filter === 'followup') return d.fu;
-    return d.role.toLowerCase() === filter;
-  });
-  const list = document.getElementById('dash-list');
-  if (!filtered.length) { list.innerHTML = '<p style="text-align:center;color:var(--text3);padding:40px 0;font-size:14px">Tidak ada data</p>'; return; }
-  list.innerHTML = filtered.map(d => `
-    <div class="log-item">
-      <div class="li-top">
-        <span class="li-name">${icons[d.role]||''} ${d.nama}</span>
-        <span class="badge ${d.fu ? 'badge-fu' : 'badge-ok'}">${d.fu ? 'Follow Up' : 'Selesai'}</span>
-      </div>
-      <div class="li-detail">${d.role} — ${d.kegiatan}</div>
-      <div class="li-time">${d.waktu}</div>
-    </div>
-  `).join('');
+// ── Lookup helpers ────────────────────────────────────────────
+// Helper: normalize ID/string untuk lookup
+function _s(v) { return String(v == null ? '' : v).trim(); }
+
+function lookupNama(id) {
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const p = (masterData.pegawai||[]).find(x =>
+      _s(x.PegawaiID) === s || _s(x.Nama) === s
+    );
+    return p ? _s(p.Nama) : s;
+  } catch(e) { return s; }
 }
 
-// ── Lookup helpers ────────────────────────────────────────────
-function lookupNama(id) {
-  if (!id) return '-';
-  const p = (masterData.pegawai||[]).find(x => x.PegawaiID === id || x.Nama === id);
-  return p ? p.Nama : id;
-}
 function lookupKegiatan(id) {
-  if (!id) return '-';
-  const k = (masterData.jenisKegiatanCS||[]).find(x => x.KegiatanID === id || x.NamaKegiatan === id);
-  return k ? k.NamaKegiatan : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const k = (masterData.jenisKegiatanCS||[]).find(x =>
+      _s(x.KegiatanID) === s || _s(x.NamaKegiatan) === s
+    );
+    return k ? _s(k.NamaKegiatan) : s;
+  } catch(e) { return s; }
 }
+
 function lookupKegiatanDriver(id) {
-  if (!id) return '-';
-  // Driver pakai prefix KD00x untuk JenisKegiatan (sama dengan KendaraanDinas)
-  // Master kolomnya bisa: KegiatanDriverID atau KegiatanID
-  const k = (masterData.jenisKegiatanDriver||[]).find(x =>
-    x.KegiatanDriverID === id || x.KegiatanID === id || x.NamaKegiatan === id
-  );
-  return k ? k.NamaKegiatan : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const k = (masterData.jenisKegiatanDriver||[]).find(x =>
+      _s(x.KegiatanDriverID) === s ||
+      _s(x.KegiatanID) === s ||
+      _s(x.NamaKegiatan) === s
+    );
+    return k ? _s(k.NamaKegiatan) : s;
+  } catch(e) { return s; }
 }
+
 function lookupLokasi(id) {
-  if (!id) return '-';
-  const l = (masterData.lokasi||[]).find(x => x.LokasiID === (id||'').trim());
-  return l ? l.NamaLokasi : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const l = (masterData.lokasi||[]).find(x =>
+      _s(x.LokasiID) === s || _s(x.NamaLokasi) === s
+    );
+    return l ? _s(l.NamaLokasi) : s;
+  } catch(e) { return s; }
 }
+
 function lookupDetailKegiatan(ids) {
-  if (!ids) return '-';
-  return ids.split(',').map(id => {
-    const d = (masterData.detailKegiatan||[]).find(x => x.DetailKegiatanID === id.trim());
-    return d ? d.NamaDetailKegiatan : id.trim();
-  }).filter(Boolean).join(', ');
+  const s = _s(ids);
+  if (!s) return '-';
+  try {
+    return s.split(',').map(id => {
+      const t = _s(id);
+      const d = (masterData.detailKegiatan||[]).find(x => _s(x.DetailKegiatanID) === t);
+      return d ? _s(d.NamaDetailKegiatan) : t;
+    }).filter(Boolean).join(', ');
+  } catch(e) { return s; }
 }
+
 function lookupKendaraan(id) {
-  if (!id) return '-';
-  // Coba exact match dulu
-  let k = (masterData.kendaraanDinas||[]).find(x => x.KendaraanID === id || x.NamaKendaraan === id);
-  if (!k) {
-    // Coba match plat nomor
-    k = (masterData.kendaraanDinas||[]).find(x => x.Plat && x.Plat.replace(/\s/g,'').toLowerCase() === id.replace(/\s/g,'').toLowerCase());
-  }
-  return k ? k.NamaKendaraan + ' (' + k.Plat + ')' : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    let k = (masterData.kendaraanDinas||[]).find(x =>
+      _s(x.KendaraanID) === s ||
+      _s(x.NamaKendaraan) === s
+    );
+    if (!k) {
+      // Match plat nomor (normalize spasi)
+      const sNorm = s.replace(/\s/g, '').toLowerCase();
+      k = (masterData.kendaraanDinas||[]).find(x => {
+        const plat = _s(x.Plat).replace(/\s/g, '').toLowerCase();
+        return plat && plat === sNorm;
+      });
+    }
+    if (k) {
+      const plat = _s(k.Plat);
+      return _s(k.NamaKendaraan) + (plat ? ' (' + plat + ')' : '');
+    }
+    return s;
+  } catch(e) { return s; }
 }
+
 function lookupKeperluan(id) {
-  if (!id) return '-';
-  const k = (masterData.keperluanDriver||[]).find(x => x.KepID === id || x.NamaKeperluan === id);
-  return k ? k.NamaKeperluan : id;
+  const s = _s(id);
+  if (!s) return '-';
+  try {
+    const k = (masterData.keperluanDriver||[]).find(x =>
+      _s(x.KepID) === s ||
+      _s(x.KeperluanID) === s ||
+      _s(x.NamaKeperluan) === s ||
+      _s(x.Keperluan) === s
+    );
+    return k ? _s(k.NamaKeperluan || k.Keperluan) : s;
+  } catch(e) { return s; }
 }
+
 function lookupKegiatanPiket(ids) {
-  if (!ids) return '-';
-  return ids.split(',').map(id => {
-    const k = (masterData.kegiatanPiket||[]).find(x => x.KegiatanPiketID === id.trim());
-    return k ? k.NamaKegiatanPiket : id.trim();
-  }).filter(Boolean).join(', ');
+  const s = _s(ids);
+  if (!s) return '-';
+  try {
+    return s.split(',').map(id => {
+      const t = _s(id);
+      const k = (masterData.kegiatanPiket||[]).find(x =>
+        _s(x.KegiatanPiketID) === t ||
+        _s(x.NamaKegiatanPiket) === t
+      );
+      return k ? _s(k.NamaKegiatanPiket) : t;
+    }).filter(Boolean).join(', ');
+  } catch(e) { return s; }
+}
+
+// Helper untuk ambil field dengan multiple kemungkinan nama kolom
+function pick(row, ...keys) {
+  for (const k of keys) {
+    if (row[k] != null && row[k] !== '') return row[k];
+  }
+  return '';
 }
 
 
@@ -2954,18 +3175,25 @@ function renderList(role, filter) {
         detail = `Accu: ${r.KondisiAccu||'-'} &bull; Radiator: ${r.KondisiRadiator||'-'} &bull; BBM: ${r.StokBBMGenset||'-'}`;
       }
     } else if (role === 'driver') {
-      // jkRaw bisa kode (KD001/002/003) atau nama. Resolve dulu.
       const namaJk = lookupKegiatanDriver(jkRaw);
-      const kend = lookupKendaraan(r.KendaraanDinas);
-      const kep  = lookupKeperluan(r.KegiatanBBM);
+      // Coba beberapa kemungkinan nama kolom kendaraan
+      const kendRaw = pick(r, 'KendaraanDinas', 'Kendaraan Dinas', 'KendaraanID', 'Kendaraan');
+      const kend = kendRaw ? lookupKendaraan(kendRaw) : '-';
+      // Coba beberapa kemungkinan nama kolom keperluan/kegiatan BBM
+      const kepRaw = pick(r, 'KegiatanBBM', 'Kegiatan BBM', 'KeperluanBBM', 'Keperluan');
+      const kep = kepRaw ? lookupKeperluan(kepRaw) : '-';
+      const nominal = Number(pick(r, 'NominalBBM', 'Nominal BBM', 'Nominal') || 0);
+      const nominalStr = isFinite(nominal) ? nominal.toLocaleString('id-ID') : '0';
+
       if (namaJk.includes('BBM')) {
-        detail = `${kend} &bull; Rp ${Number(r.NominalBBM||0).toLocaleString('id-ID')} &bull; ${kep}`;
+        detail = `${kend} &bull; Rp ${nominalStr} &bull; ${kep}`;
       } else if (namaJk.includes('Rekapitulasi')) {
-        const tahap = r.TahapKegiatan || '-';
-        const odo = r.OdometerAwal || r.OdometerAkhir || '-';
+        const tahap = pick(r, 'TahapKegiatan', 'Tahap') || '-';
+        const odo = pick(r, 'OdometerAwal', 'OdometerAkhir', 'Odometer') || '-';
         detail = `${kend} &bull; ${tahap} &bull; Odo: ${odo}`;
       } else if (namaJk.includes('Kondisi')) {
-        detail = `${kend} &bull; Odo: ${r.OdometerValue||'-'} km`;
+        const odoVal = pick(r, 'OdometerValue', 'Odometer') || '-';
+        detail = `${kend} &bull; Odo: ${odoVal} km`;
       } else {
         detail = `${kend}`;
       }
