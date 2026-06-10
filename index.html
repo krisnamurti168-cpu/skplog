@@ -791,6 +791,18 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <input type="number" id="drv-nominal-bbm" placeholder="0">
       </div>
       <div class="form-group">
+        <label>Harga per Liter (Rp)</label>
+        <input type="number" id="drv-harga-liter" placeholder="0" step="100">
+      </div>
+      <div class="form-group">
+        <label>Jumlah Liter</label>
+        <input type="number" id="drv-jumlah-liter" placeholder="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>KM ODO</label>
+        <input type="number" id="drv-bbm-odo" placeholder="Odometer saat isi BBM">
+      </div>
+      <div class="form-group">
         <label>Kegiatan BBM</label>
         <select id="drv-kegiatan-bbm"><option value="">— Pilih —</option></select>
       </div>
@@ -878,6 +890,55 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <select id="drv-kondisi-kendaraan"><option value="">— Pilih —</option></select>
       </div>
       <div class="form-group">
+        <label>Tipe Laporan</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="drvSetTipeLaporan('Harian',this)">Harian</button>
+          <button class="enum-btn" onclick="drvSetTipeLaporan('Bulanan',this)">Bulanan</button>
+        </div>
+        <input type="hidden" id="drv-tipe-laporan">
+      </div>
+
+      <!-- ─ Kondisi Harian ─ -->
+      <div id="drv-kondisi-harian-fields" class="hidden">
+        <hr class="divider">
+        <span class="divider-label">Pemeriksaan Harian</span>
+        <div class="form-group">
+          <label>Kebersihan Dalam Mobil <span class="req">*</span></label>
+          <div class="photo-picker">
+            <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-dalam')"><span class="icon">📷</span> Kamera</button>
+            <button type="button" class="photo-pick-btn" onclick="document.getElementById('drv-foto-dalam-file').click()"><span class="icon">🖼️</span> Galeri</button>
+          </div>
+          <input type="file" id="drv-foto-dalam-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('drv-foto-dalam', this)">
+          <div id="drv-foto-dalam-preview-wrap" class="photo-hidden">
+            <div class="photo-preview-wrap">
+              <img id="drv-foto-dalam-preview" class="photo-preview">
+              <button type="button" class="photo-clear-btn" onclick="clearPhoto('drv-foto-dalam')">×</button>
+            </div>
+            <div class="photo-info" id="drv-foto-dalam-info"></div>
+          </div>
+          <input type="hidden" id="drv-foto-dalam">
+        </div>
+        <div class="form-group">
+          <label>Kebersihan Luar Mobil <span class="req">*</span></label>
+          <div class="photo-picker">
+            <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-luar')"><span class="icon">📷</span> Kamera</button>
+            <button type="button" class="photo-pick-btn" onclick="document.getElementById('drv-foto-luar-file').click()"><span class="icon">🖼️</span> Galeri</button>
+          </div>
+          <input type="file" id="drv-foto-luar-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('drv-foto-luar', this)">
+          <div id="drv-foto-luar-preview-wrap" class="photo-hidden">
+            <div class="photo-preview-wrap">
+              <img id="drv-foto-luar-preview" class="photo-preview">
+              <button type="button" class="photo-clear-btn" onclick="clearPhoto('drv-foto-luar')">×</button>
+            </div>
+            <div class="photo-info" id="drv-foto-luar-info"></div>
+          </div>
+          <input type="hidden" id="drv-foto-luar">
+        </div>
+      </div>
+
+      <!-- ─ Kondisi Bulanan (form lengkap) ─ -->
+      <div id="drv-kondisi-bulanan-fields" class="hidden">
+      <div class="form-group">
         <label>Kebersihan ✓</label>
         <div class="checkbox-group" id="drv-kebersihan-list"></div>
       </div>
@@ -937,6 +998,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
       <input type="hidden" id="drv-foto-kondisi">
       </div>
+      </div><!-- /drv-kondisi-bulanan-fields -->
     </div>
 
     <!-- Follow Up -->
@@ -2100,11 +2162,20 @@ function populateDropdowns() {
   // CS Kegiatan
   fillSelect('cs-kegiatan', masterData.jenisKegiatanCS, 'KegiatanID', 'NamaKegiatan');
   // Driver Pegawai
-  fillSelect('drv-pegawai', masterData.pegawai.filter(p=>p.Role==='Driver'), 'PegawaiID', 'Nama');
-  // Driver Kendaraan
+  // Form Driver login: hanya PPPK Driver asli (PegawaiID format PG00x)
+  // Driver tambahan (untuk Security) pakai ID format lain (DRV/SP/dll)
+  fillSelect('drv-pegawai',
+    masterData.pegawai.filter(p => p.Role==='Driver' && /^PG/i.test(String(p.PegawaiID||''))),
+    'PegawaiID', 'Nama');
+  // Driver Kendaraan — skip "undefined" kalau Plat kosong
   const kend = masterData.kendaraanDinas;
   ['drv-bbm-kendaraan','drv-rekap-kendaraan','drv-kondisi-kendaraan','sec-kendaraan-dinas'].forEach(id => {
-    fillSelect(id, kend, 'KendaraanID', p=>`${p.NamaKendaraan} (${p.Plat})`);
+    fillSelect(id, kend, 'KendaraanID', p => {
+      const nama = (p.NamaKendaraan || p.Nama || '').toString().trim();
+      const plat = (p.Plat || p.PlatNomor || '').toString().trim();
+      if (nama && plat) return nama + ' (' + plat + ')';
+      return nama || plat || '-';
+    });
   });
   // Driver Keperluan BBM
   fillSelect('drv-kegiatan-bbm', masterData.keperluanDriver, 'KepID', 'NamaKeperluan');
@@ -2344,17 +2415,49 @@ function drvOnTahap() {
   if (v === 'Persiapan Kendaraan') show('drv-odometer-awal-wrap');
   if (v === 'Setelah bertugas') show('drv-odometer-akhir-wrap');
 
-  // Render uraian filtered
-  const filtered = (masterData.uraianKegiatan || []).filter(u => u.TahapKegiatan === v);
+  // Render uraian filtered — robust matching (case-insensitive, trim, fallback field)
+  const vNorm = _s(v).toLowerCase();
+  const filtered = (masterData.uraianKegiatan || []).filter(u => {
+    const tahap = _s(u.TahapKegiatan || u.Tahap || u.tahap_kegiatan || '').toLowerCase();
+    return tahap === vNorm || tahap.includes(vNorm) || vNorm.includes(tahap);
+  });
   const container = document.getElementById('drv-uraian-list');
+  if (!container) return;
   container.innerHTML = '';
+
+  if (!filtered.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'font-size:12px;color:var(--text3);padding:6px 0';
+    empty.textContent = '(Belum ada uraian master untuk tahap ini — tambahkan manual di bawah)';
+    container.appendChild(empty);
+  }
+
   filtered.forEach(u => {
+    const uraianText = _s(u.UraianKegiatan || u.Uraian || u.NamaUraian || '');
+    const uraianID = _s(u.UraianID || u.UraianKegiatanID || uraianText);
+    if (!uraianText) return;
     const div = document.createElement('div');
     div.className = 'checkbox-item';
-    div.innerHTML = `<input type="checkbox" value="${u.UraianID}"><span>${u.UraianKegiatan}</span>`;
-    div.onclick = () => { const cb = div.querySelector('input'); cb.checked = !cb.checked; div.classList.toggle('checked', cb.checked); };
+    div.innerHTML = `<input type="checkbox" value="${uraianID}"><span>${uraianText}</span>`;
+    div.onclick = (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        const cb = div.querySelector('input');
+        cb.checked = !cb.checked;
+      }
+      const cb = div.querySelector('input');
+      div.classList.toggle('checked', cb.checked);
+    };
     container.appendChild(div);
   });
+}
+
+function drvSetTipeLaporan(v, btn) {
+  btn.closest('.enum-group').querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('drv-tipe-laporan').value = v;
+  // Toggle visibility: Harian vs Bulanan
+  document.getElementById('drv-kondisi-harian-fields').classList.toggle('hidden', v !== 'Harian');
+  document.getElementById('drv-kondisi-bulanan-fields').classList.toggle('hidden', v !== 'Bulanan');
 }
 
 function drvAddUraian() {
@@ -2382,6 +2485,18 @@ async function submitDriver() {
   if (!val('drv-kegiatan')) { showToast('Pilih jenis kegiatan'); return; }
 
   const uraianChecked = [...document.querySelectorAll('#drv-uraian-list input:checked')].map(cb => cb.value).join(', ');
+  const tipeLaporan = val('drv-tipe-laporan'); // 'Harian' / 'Bulanan' / ''
+
+  // KM ODO untuk BBM pakai field drv-bbm-odo, untuk Kondisi pakai drv-odometer
+  // Backend pakai 1 kolom OdometerValue untuk keduanya
+  const odoBBM = val('drv-bbm-odo');
+  const odoKondisi = val('drv-odometer');
+  const odometerValue = odoBBM || odoKondisi;
+
+  // Foto untuk Kondisi Kendaraan: kalau Harian, kirim foto dalam + foto luar; kalau Bulanan, foto kondisi
+  const fotoKondisiKendaraan = val('drv-foto-kondisi');
+  const fotoKebersihanDalam = val('drv-foto-dalam');
+  const fotoKebersihanLuar = val('drv-foto-luar');
 
   const data = {
     tanggal: val('drv-tanggal'),
@@ -2392,6 +2507,8 @@ async function submitDriver() {
     tipeKegiatan: drvState.tipeKeg,
     nomorST: val('drv-nomor-st'),
     nominalBBM: val('drv-nominal-bbm'),
+    hargaPerLiter: val('drv-harga-liter'),
+    jumlahLiter: val('drv-jumlah-liter'),
     kegiatanBBM: val('drv-kegiatan-bbm'),
     kegiatanBBMLainnya: val('drv-bbm-lainnya'),
     hari: val('drv-hari'),
@@ -2399,11 +2516,12 @@ async function submitDriver() {
     uraianKegiatan: uraianChecked,
     odometerAwal: val('drv-odometer-awal'),
     odometerAkhir: val('drv-odometer-akhir'),
-    itemKebersihan: getChecked('drv-kebersihan-list'),
-    itemFungsiKeselamatan: getChecked('drv-keselamatan-list'),
-    itemKelengkapanKendaraan: getChecked('drv-kelengkapan-list'),
-    itemKelengkapanAdministrasi: getChecked('drv-administrasi-list'),
-    odometerValue: val('drv-odometer'),
+    tipeLaporanKondisi: tipeLaporan,
+    itemKebersihan: tipeLaporan === 'Bulanan' ? getChecked('drv-kebersihan-list') : '',
+    itemFungsiKeselamatan: tipeLaporan === 'Bulanan' ? getChecked('drv-keselamatan-list') : '',
+    itemKelengkapanKendaraan: tipeLaporan === 'Bulanan' ? getChecked('drv-kelengkapan-list') : '',
+    itemKelengkapanAdministrasi: tipeLaporan === 'Bulanan' ? getChecked('drv-administrasi-list') : '',
+    odometerValue: odometerValue,
     jadwalKMServis: val('drv-km-servis'),
     keteranganServis: val('drv-ket-servis'),
     tanggalJatuhTempoPajak: val('drv-pajak-tanggal'),
@@ -2413,7 +2531,9 @@ async function submitDriver() {
     detailLaporan: val('drv-detail-laporan'),
     fotoBBM: val('drv-foto-bbm'),
     fotoTambahan: val('drv-foto-rekap'),
-    fotoKondisiKendaraan: val('drv-foto-kondisi'),
+    fotoKondisiKendaraan: tipeLaporan === 'Bulanan' ? fotoKondisiKendaraan : '',
+    fotoKebersihanDalam: tipeLaporan === 'Harian' ? fotoKebersihanDalam : '',
+    fotoKebersihanLuar: tipeLaporan === 'Harian' ? fotoKebersihanLuar : '',
     fotoFollowUp: val('drv-foto-fu'),
   };
 
@@ -2496,13 +2616,10 @@ function secSetStatusKend(v, btn) {
   btn.classList.add('active');
   document.getElementById('sec-jam-masuk-wrap').classList.toggle('hidden', v !== 'Masuk');
   document.getElementById('sec-jam-keluar-wrap').classList.toggle('hidden', v !== 'Keluar');
-  // BBM Tersisa hanya untuk Masuk; Keperluan hanya untuk Keluar
-  const bbmWrap = document.getElementById('sec-bbm-tersisa-wrap');
   const kepWrap = document.getElementById('sec-keperluan-wrap');
   const kepLainWrap = document.getElementById('sec-keperluan-lainnya-wrap');
-  if (bbmWrap) bbmWrap.classList.toggle('hidden', v !== 'Masuk');
   if (kepWrap) kepWrap.classList.toggle('hidden', v !== 'Keluar');
-  // Reset Keperluan Lainnya saat ganti status
+  // Reset Keperluan saat ganti status
   if (v !== 'Keluar') {
     if (kepLainWrap) kepLainWrap.classList.add('hidden');
     const kepSel = document.getElementById('sec-keperluan');
@@ -2510,11 +2627,19 @@ function secSetStatusKend(v, btn) {
     const kepLain = document.getElementById('sec-keperluan-lainnya');
     if (kepLain) kepLain.value = '';
   }
-  // Reset BBM Tersisa saat ganti ke Keluar
-  if (v !== 'Masuk') {
+  // Update visibility BBM Tersisa (butuh kedua: Status=Masuk DAN Tipe=Dinas)
+  secUpdateBBMTersisaVisibility();
+}
+
+function secUpdateBBMTersisaVisibility() {
+  const bbmWrap = document.getElementById('sec-bbm-tersisa-wrap');
+  if (!bbmWrap) return;
+  const shouldShow = secState.statusKend === 'Masuk' && secState.tipeKend === 'Dinas';
+  bbmWrap.classList.toggle('hidden', !shouldShow);
+  if (!shouldShow) {
     const bbm = document.getElementById('sec-bbm-tersisa');
     if (bbm) bbm.value = '';
-    if (bbmWrap) bbmWrap.querySelectorAll('.enum-btn.active').forEach(b => b.classList.remove('active'));
+    bbmWrap.querySelectorAll('.enum-btn.active').forEach(b => b.classList.remove('active'));
   }
 }
 
@@ -2549,6 +2674,8 @@ function secSetTipeKend(v, btn) {
   document.getElementById('sec-kend-dinas-wrap').classList.toggle('hidden', v !== 'Dinas');
   document.getElementById('sec-driver-wrap').classList.toggle('hidden', v !== 'Dinas');
   document.getElementById('sec-kend-manual-wrap').classList.toggle('hidden', v === 'Dinas');
+  // BBM Tersisa hanya untuk Tipe=Dinas DAN Status=Masuk
+  secUpdateBBMTersisaVisibility();
   document.getElementById('sec-sopir-manual-wrap').classList.toggle('hidden', v === 'Dinas');
 }
 
