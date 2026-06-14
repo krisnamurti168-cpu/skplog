@@ -795,10 +795,6 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <input type="number" id="drv-harga-liter" placeholder="0" step="100">
       </div>
       <div class="form-group">
-        <label>Jumlah Liter</label>
-        <input type="number" id="drv-jumlah-liter" placeholder="0" step="0.01">
-      </div>
-      <div class="form-group">
         <label>KM ODO</label>
         <input type="number" id="drv-bbm-odo" placeholder="Odometer saat isi BBM">
       </div>
@@ -2177,10 +2173,24 @@ function populateDropdowns() {
       return nama || plat || '-';
     });
   });
-  // Driver Keperluan BBM
+  // Driver Kegiatan BBM — selalu append opsi "Lainnya" di akhir
   fillSelect('drv-kegiatan-bbm', masterData.keperluanDriver, 'KepID', 'NamaKeperluan');
-  // Keperluan Security
+  const drvKegBBMEl = document.getElementById('drv-kegiatan-bbm');
+  if (drvKegBBMEl && ![...drvKegBBMEl.options].some(o => o.text.toLowerCase().includes('lainnya'))) {
+    const opt = document.createElement('option');
+    opt.value = 'Lainnya';
+    opt.textContent = 'Lainnya';
+    drvKegBBMEl.appendChild(opt);
+  }
+  // Keperluan Security — selalu append opsi "Lainnya" di akhir
   fillSelect('sec-keperluan', masterData.keperluanDriver, 'KepID', 'NamaKeperluan');
+  const kepEl = document.getElementById('sec-keperluan');
+  if (kepEl && ![...kepEl.options].some(o => o.text.toLowerCase().includes('lainnya'))) {
+    const opt = document.createElement('option');
+    opt.value = 'Lainnya';
+    opt.textContent = 'Lainnya';
+    kepEl.appendChild(opt);
+  }
   // Security Pegawai
   fillSelect('sec-pegawai', masterData.pegawai.filter(p=>p.Role==='Security'), 'PegawaiID', 'Nama');
   // Security Driver dropdown
@@ -2289,17 +2299,27 @@ function csSetKantor(kantor, btn) {
 
 function csUpdateLokasi() {
   const kg = val('cs-kegiatan');
-  const kgData = masterData.jenisKegiatanCS?.find(k => k.KegiatanID === kg || k.NamaKegiatan === kg);
-  const nama = kgData?.NamaKegiatan || '';
+  const kgData = masterData.jenisKegiatanCS?.find(k => _s(k.KegiatanID) === _s(kg) || _s(k.NamaKegiatan) === _s(kg));
+  const nama = _s(kgData?.NamaKegiatan || '');
   const isKM = nama.includes('Kamar Mandi');
   const isVakum = nama.includes('Vakum');
   const isSlave = nama.includes('Slave');
 
+  // Helper: cek TRUE secara robust (boolean true, string 'TRUE'/'True'/'true', '1', 'YA', 'Y')
+  const isTrue = (v) => {
+    if (v === true) return true;
+    const s = String(v == null ? '' : v).trim().toUpperCase();
+    return s === 'TRUE' || s === '1' || s === 'YA' || s === 'Y';
+  };
+
+  // Normalize Kantor untuk filter (case-insensitive, trim)
+  const kantorTarget = _s(csState.kantor).toLowerCase();
+
   const filtered = (masterData.lokasi || []).filter(l => {
-    if (l.Kantor !== csState.kantor) return false;
-    if (isKM)    return l.TipeLokasiKM === 'TRUE';
-    if (isVakum) return l.TipeLokasiVakum === 'TRUE';
-    if (isSlave) return l.TipeLokasiSlave === 'TRUE';
+    if (_s(l.Kantor).toLowerCase() !== kantorTarget) return false;
+    if (isKM)    return isTrue(l.TipeLokasiKM);
+    if (isVakum) return isTrue(l.TipeLokasiVakum);
+    if (isSlave) return isTrue(l.TipeLokasiSlave);
     return true;
   });
 
@@ -2311,26 +2331,175 @@ function csUpdateLokasi() {
     opt.textContent = l.NamaLokasi;
     sel.appendChild(opt);
   });
+  // Tambah opsi "+ Tambah lokasi baru" di akhir
+  const addOpt = document.createElement('option');
+  addOpt.value = '__ADD_LOKASI__';
+  addOpt.textContent = '+ Tambah lokasi baru…';
+  sel.appendChild(addOpt);
 }
 
 function csOnLokasi() {
-  csState.lokasi = val('cs-lokasi');
+  const v = val('cs-lokasi');
+  // Handle opsi "Tambah lokasi baru"
+  if (v === '__ADD_LOKASI__') {
+    promptAddLokasi();
+    document.getElementById('cs-lokasi').value = '';
+    return;
+  }
+  csState.lokasi = v;
   if (!csState.lokasi) { hide('cs-detail-wrap'); return; }
-  const details = (masterData.detailKegiatan || []).filter(d => d.LokasiID === csState.lokasi);
+
   const container = document.getElementById('cs-detail-list');
   container.innerHTML = '';
+
+  const details = (masterData.detailKegiatan || []).filter(d => _s(d.LokasiID) === _s(csState.lokasi));
   details.forEach(d => {
     const div = document.createElement('div');
     div.className = 'checkbox-item';
     div.innerHTML = `<input type="checkbox" value="${d.DetailKegiatanID}"><span>${d.NamaDetailKegiatan}</span>`;
-    div.onclick = () => {
+    div.onclick = (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        const cb = div.querySelector('input');
+        cb.checked = !cb.checked;
+      }
       const cb = div.querySelector('input');
-      cb.checked = !cb.checked;
       div.classList.toggle('checked', cb.checked);
     };
     container.appendChild(div);
   });
+
+  // Opsi tambah detail kegiatan baru
+  const addBtn = document.createElement('div');
+  addBtn.className = 'checkbox-item';
+  addBtn.style.cssText = 'border: 1px dashed var(--border); color: var(--text2); justify-content: center; cursor: pointer;';
+  addBtn.innerHTML = '<span>+ Tambah detail kegiatan baru…</span>';
+  addBtn.onclick = () => promptAddDetailKegiatan();
+  container.appendChild(addBtn);
+
   show('cs-detail-wrap');
+}
+
+// ── Tambah Lokasi / Detail Kegiatan baru (CS) ──────────────────
+async function promptAddLokasi() {
+  if (!csState.kantor) {
+    showToast('Pilih kantor dulu sebelum tambah lokasi');
+    return;
+  }
+  const nama = prompt('Nama lokasi baru untuk kantor ' + csState.kantor + ':');
+  if (!nama || !nama.trim()) return;
+
+  // Tanya tipe lokasi (KM/Vakum/Slave) — opsional
+  const tipeJawab = prompt(
+    'Apakah lokasi ini untuk Pembersihan KM / Vakum / Slave?\n' +
+    'Ketik angka: 0=Tidak ada, 1=Kamar Mandi, 2=Vakum, 3=Slave\n' +
+    '(Bisa multiple, pisah koma. Contoh: 1,2)',
+    '0'
+  );
+  if (tipeJawab === null) return; // user batal
+
+  const tipes = String(tipeJawab || '').split(',').map(s => s.trim());
+  const tipeLokasiKM = tipes.includes('1');
+  const tipeLokasiVakum = tipes.includes('2');
+  const tipeLokasiSlave = tipes.includes('3');
+
+  if (!confirm('Yakin tambah lokasi baru?\n\n' +
+    'Nama: ' + nama.trim() + '\n' +
+    'Kantor: ' + csState.kantor + '\n' +
+    'Tipe: ' + (tipeLokasiKM?'KM ':'') + (tipeLokasiVakum?'Vakum ':'') + (tipeLokasiSlave?'Slave':'') || '-')) return;
+
+  setLoading(true);
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'addLokasi',
+        token: currentUser?.token || '',
+        data: {
+          nama: nama.trim(),
+          kantor: csState.kantor,
+          tipeLokasiKM: tipeLokasiKM,
+          tipeLokasiVakum: tipeLokasiVakum,
+          tipeLokasiSlave: tipeLokasiSlave,
+        },
+      }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      // Append ke masterData supaya langsung muncul
+      (masterData.lokasi || []).push({
+        LokasiID: result.lokasiID,
+        NamaLokasi: result.nama,
+        Kantor: result.kantor,
+        TipeLokasiKM: tipeLokasiKM ? 'TRUE' : '',
+        TipeLokasiVakum: tipeLokasiVakum ? 'TRUE' : '',
+        TipeLokasiSlave: tipeLokasiSlave ? 'TRUE' : '',
+      });
+      csUpdateLokasi();
+      // Set selected ke lokasi baru
+      const sel = document.getElementById('cs-lokasi');
+      if (sel) {
+        sel.value = result.lokasiID;
+        csOnLokasi();
+      }
+      showToast('Lokasi baru berhasil ditambahkan: ' + result.lokasiID);
+    } else {
+      showToast('Gagal: ' + (result.error || 'tidak diketahui'));
+    }
+  } catch(e) {
+    showToast('Gagal tambah lokasi: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function promptAddDetailKegiatan() {
+  if (!csState.lokasi) {
+    showToast('Pilih lokasi dulu');
+    return;
+  }
+  const nama = prompt('Nama detail kegiatan baru untuk lokasi ini:');
+  if (!nama || !nama.trim()) return;
+  if (!confirm('Yakin tambah detail kegiatan baru?\n\n' + nama.trim())) return;
+
+  setLoading(true);
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'addDetailKegiatan',
+        token: currentUser?.token || '',
+        data: {
+          nama: nama.trim(),
+          lokasiID: csState.lokasi,
+        },
+      }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      (masterData.detailKegiatan || []).push({
+        DetailKegiatanID: result.detailKegiatanID,
+        NamaDetailKegiatan: result.nama,
+        LokasiID: result.lokasiID,
+      });
+      // Re-render checklist
+      csOnLokasi();
+      // Auto-centang detail baru
+      setTimeout(() => {
+        const cb = document.querySelector('#cs-detail-list input[value="' + result.detailKegiatanID + '"]');
+        if (cb) {
+          cb.checked = true;
+          cb.closest('.checkbox-item').classList.add('checked');
+        }
+      }, 100);
+      showToast('Detail kegiatan baru berhasil ditambahkan');
+    } else {
+      showToast('Gagal: ' + (result.error || 'tidak diketahui'));
+    }
+  } catch(e) {
+    showToast('Gagal tambah detail: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
 }
 
 function csSetFU(v) {
@@ -2388,6 +2557,28 @@ function drvOnKegiatan() {
   if (v === 'Penggunaan BBM Kendaraan Dinas') show('drv-bbm-fields');
   else if (v === 'Rekapitulasi Penggunaan Kendaraan Dinas') show('drv-rekap-fields');
   else if (v === 'Laporan Kondisi Kendaraan Dinas Roda Empat') show('drv-kondisi-fields');
+  // Re-populate dropdown pegawai sesuai jenis kegiatan
+  drvUpdatePegawaiDropdown(v);
+}
+
+// Untuk BBM: semua pegawai Role=Driver (PPPK + tambahan, admin bisa input atas nama).
+// Untuk Rekap/Kondisi: hanya PPPK Driver asli (PegawaiID prefix PG).
+function drvUpdatePegawaiDropdown(jenisKegiatan) {
+  // Saat user biasa (non-admin) login, dropdown sudah locked ke namanya sendiri — skip re-populate
+  if (currentUser && currentUser.role !== 'admin') return;
+
+  const isBBM = String(jenisKegiatan || '').includes('BBM');
+  const allDriver = (masterData.pegawai || []).filter(p => p.Role === 'Driver');
+  const pppkOnly = allDriver.filter(p => /^PG/i.test(String(p.PegawaiID || '')));
+  const list = isBBM ? allDriver : pppkOnly;
+
+  const current = val('drv-pegawai');
+  fillSelect('drv-pegawai', list, 'PegawaiID', 'Nama');
+  // Restore selected jika masih valid
+  const el = document.getElementById('drv-pegawai');
+  if (el && current && [...el.options].some(o => o.value === current)) {
+    el.value = current;
+  }
 }
 
 function drvSetTipeKeg(v, btn) {
@@ -2403,7 +2594,15 @@ function drvSetTipeKeg(v, btn) {
 
 document.addEventListener('change', e => {
   if (e.target.id === 'drv-kegiatan-bbm') {
-    document.getElementById('drv-bbm-lainnya-wrap').classList.toggle('hidden', e.target.value !== 'Lainnya');
+    const sel = e.target;
+    const txt = (sel.options[sel.selectedIndex] || {}).text || '';
+    const val = sel.value || '';
+    const isLainnya = txt.toLowerCase().includes('lainnya') || val.toLowerCase().includes('lainnya');
+    document.getElementById('drv-bbm-lainnya-wrap').classList.toggle('hidden', !isLainnya);
+    if (!isLainnya) {
+      const t = document.getElementById('drv-bbm-lainnya');
+      if (t) t.value = '';
+    }
   }
 });
 
@@ -2508,7 +2707,6 @@ async function submitDriver() {
     nomorST: val('drv-nomor-st'),
     nominalBBM: val('drv-nominal-bbm'),
     hargaPerLiter: val('drv-harga-liter'),
-    jumlahLiter: val('drv-jumlah-liter'),
     kegiatanBBM: val('drv-kegiatan-bbm'),
     kegiatanBBMLainnya: val('drv-bbm-lainnya'),
     hari: val('drv-hari'),
@@ -2657,8 +2855,10 @@ function secSetStokBBM(v, btn) {
 
 function secOnKeperluan() {
   const sel = document.getElementById('sec-keperluan');
+  if (!sel) return;
   const txt = (sel.options[sel.selectedIndex] || {}).text || '';
-  const isLainnya = txt.toLowerCase().includes('lainnya') || sel.value.toLowerCase().includes('lainnya');
+  const val = sel.value || '';
+  const isLainnya = txt.toLowerCase().includes('lainnya') || val.toLowerCase().includes('lainnya');
   const wrap = document.getElementById('sec-keperluan-lainnya-wrap');
   if (wrap) wrap.classList.toggle('hidden', !isLainnya);
   if (!isLainnya) {
@@ -2907,7 +3107,13 @@ function dashFilter(filter, btn) {
 
 // ── Lookup helpers ────────────────────────────────────────────
 // Helper: normalize ID/string untuk lookup
-function _s(v) { return String(v == null ? '' : v).trim(); }
+// Filter juga literal "undefined", "null", "NaN" yang kadang masuk dari data legacy/corrupt
+function _s(v) {
+  const s = String(v == null ? '' : v).trim();
+  const low = s.toLowerCase();
+  if (low === 'undefined' || low === 'null' || low === 'nan') return '';
+  return s;
+}
 
 function lookupNama(id) {
   const s = _s(id);
