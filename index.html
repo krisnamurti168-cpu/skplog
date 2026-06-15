@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
-<title>SKP Log — PPPK</title>
+<title>SOIMAH — Sistem Operasional Informasi Manajemen Aktivitas Harian</title>
 <meta name="description" content="Aplikasi Log Kegiatan Harian PPPK Balmon Yogyakarta">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -59,6 +59,28 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   transition: background .15s;
 }
 .back-btn:hover { background: var(--surface2); }
+
+/* ── Logo SOIMAH ── */
+.app-logo-full {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  margin: 0 auto 24px;
+}
+.app-logo-home {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  margin: 0 auto 12px;
+}
+.home-header { text-align: center; }
+.home-header .home-date {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 14px;
+}
 
 /* ── Home ── */
 .home-header {
@@ -514,6 +536,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 @keyframes spin { to { transform: rotate(360deg); } }
 
 </style>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png">
 </head>
 <body>
 
@@ -522,10 +547,11 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ LOGIN ═════════════════════════════════════════════════ -->
 <div class="screen active" id="screen-login">
   <div class="login-wrap">
-    <div class="login-card">
-      <div class="logo">PPPK — Aplikasi Log Kegiatan</div>
-      <h1>Masuk Akun</h1>
-      <p>Silakan login sesuai role sebelum mengisi log kegiatan.</p>
+    <div style="width:100%;max-width:420px">
+      <img src="soimah-logo.png" alt="SOIMAH — Sistem Operasional Informasi Manajemen Aktivitas Harian" class="app-logo-full">
+      <div class="login-card">
+        <h1>Masuk Akun</h1>
+        <p>Silakan login sesuai role sebelum mengisi log kegiatan.</p>
 
       <div class="form-group">
         <label>Role <span class="req">*</span></label>
@@ -555,7 +581,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         </label>
       </div>
 
-      <button class="submit-btn" id="login-submit-btn" onclick="loginUser()">Masuk</button>
+        <button class="submit-btn" id="login-submit-btn" onclick="loginUser()">Masuk</button>
+      </div>
     </div>
   </div>
 </div>
@@ -563,9 +590,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ HOME ══════════════════════════════════════════════════ -->
 <div class="screen" id="screen-home">
   <div class="home-header">
-    <div class="logo">PPPK — Aplikasi Log Kegiatan</div>
-    <h2>SKP Log</h2>
-    <p id="home-date"></p>
+    <img src="soimah-logo.png" alt="SOIMAH" class="app-logo-home">
+    <p id="home-date" class="home-date"></p>
     <div class="auth-userbar">
       <div>
         <span>Login sebagai</span>
@@ -697,7 +723,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
     <div id="cs-fu-fields" class="hidden">
       <div class="form-group">
-        <label>Prioritas</label>
+        <label>Prioritas <span class="req">*</span></label>
         <div class="enum-group">
           <button class="enum-btn" onclick="enumSelect(this,'cs-prioritas')">Biasa</button>
           <button class="enum-btn" onclick="enumSelect(this,'cs-prioritas')">Segera</button>
@@ -706,22 +732,24 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <input type="hidden" id="cs-prioritas">
       </div>
       <div class="form-group">
-        <label>Jenis Laporan</label>
-        <select id="cs-jenis-laporan" onchange="csOnJenisLaporan()">
-          <option value="">— Pilih —</option>
-          <option>Laporan Kerusakan</option>
-          <option>Laporan Kehilangan</option>
-          <option>Laporan Permintaan Barang</option>
-          <option>Laporan Lainnya</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label id="cs-detail-laporan-label">Detail Laporan</label>
+        <label>Detail Laporan <span class="req">*</span></label>
         <textarea id="cs-detail-laporan" placeholder="Tulis detail laporan..."></textarea>
       </div>
-      <div class="form-group hidden" id="cs-jumlah-wrap">
-        <label>Jumlah Barang</label>
-        <input type="number" id="cs-jumlah" min="1" placeholder="0">
+      <div class="form-group">
+        <label>Foto Bukti Follow Up <span class="req">*</span></label>
+        <div class="photo-picker">
+          <button type="button" class="photo-pick-btn" onclick="openCamera('cs-foto-fu')"><span class="icon">📷</span> Kamera</button>
+          <button type="button" class="photo-pick-btn" onclick="document.getElementById('cs-foto-fu-file').click()"><span class="icon">🖼️</span> Galeri</button>
+        </div>
+        <input type="file" id="cs-foto-fu-file" accept="image/*" class="photo-hidden" onchange="handleGalleryPick('cs-foto-fu', this)">
+        <div id="cs-foto-fu-preview-wrap" class="photo-hidden">
+          <div class="photo-preview-wrap">
+            <img id="cs-foto-fu-preview" class="photo-preview">
+            <button type="button" class="photo-clear-btn" onclick="clearPhoto('cs-foto-fu')">×</button>
+          </div>
+          <div class="photo-info" id="cs-foto-fu-info"></div>
+        </div>
+        <input type="hidden" id="cs-foto-fu">
       </div>
     </div>
 
@@ -1009,11 +1037,20 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     </div>
     <div id="drv-fu-fields" class="hidden">
       <div class="form-group">
-        <label>Detail Laporan</label>
+        <label>Prioritas <span class="req">*</span></label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="enumSelect(this,'drv-prioritas')">Biasa</button>
+          <button class="enum-btn" onclick="enumSelect(this,'drv-prioritas')">Segera</button>
+          <button class="enum-btn" onclick="enumSelect(this,'drv-prioritas')">Sangat Segera</button>
+        </div>
+        <input type="hidden" id="drv-prioritas">
+      </div>
+      <div class="form-group">
+        <label>Detail Laporan <span class="req">*</span></label>
         <textarea id="drv-detail-laporan" placeholder="Tulis laporan..."></textarea>
       </div>
       <div class="form-group">
-        <label>Foto Follow Up</label>
+        <label>Foto Bukti Follow Up <span class="req">*</span></label>
         <div class="photo-picker">
         <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-fu')"><span class="icon">📷</span> Kamera</button>
         <button type="button" class="photo-pick-btn" onclick="document.getElementById('drv-foto-fu-file').click()"><span class="icon">🖼️</span> Galeri</button>
@@ -1297,11 +1334,20 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     </div>
     <div id="sec-fu-fields" class="hidden">
       <div class="form-group">
-        <label>Detail Laporan</label>
+        <label>Prioritas <span class="req">*</span></label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="enumSelect(this,'sec-prioritas')">Biasa</button>
+          <button class="enum-btn" onclick="enumSelect(this,'sec-prioritas')">Segera</button>
+          <button class="enum-btn" onclick="enumSelect(this,'sec-prioritas')">Sangat Segera</button>
+        </div>
+        <input type="hidden" id="sec-prioritas">
+      </div>
+      <div class="form-group">
+        <label>Detail Laporan <span class="req">*</span></label>
         <textarea id="sec-detail-laporan" placeholder="Tulis laporan..."></textarea>
       </div>
       <div class="form-group">
-        <label>Foto Follow Up</label>
+        <label>Foto Bukti Follow Up <span class="req">*</span></label>
         <div class="photo-picker">
         <button type="button" class="photo-pick-btn" onclick="openCamera('sec-foto-fu')"><span class="icon">📷</span> Kamera</button>
         <button type="button" class="photo-pick-btn" onclick="document.getElementById('sec-foto-fu-file').click()"><span class="icon">🖼️</span> Galeri</button>
@@ -1327,22 +1373,21 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <div class="top-bar">
     <button class="back-btn" onclick="go('screen-home')">‹</button>
     <div>
-      <h1>Dashboard</h1>
-      <span class="subtitle">Rekap kegiatan</span>
+      <h1>Dashboard Follow Up</h1>
+      <span class="subtitle">Laporan yang perlu ditindaklanjuti</span>
     </div>
   </div>
   <div style="padding-top:16px">
     <div class="stat-row">
-      <div class="stat-box"><div class="num" id="dash-total">—</div><div class="lbl">Total Log</div></div>
-      <div class="stat-box"><div class="num" id="dash-fu" style="color:var(--red)">—</div><div class="lbl">Follow Up</div></div>
-      <div class="stat-box"><div class="num" id="dash-today">—</div><div class="lbl">Hari Ini</div></div>
+      <div class="stat-box"><div class="num" id="dash-fu-open" style="color:var(--red)">—</div><div class="lbl">Open</div></div>
+      <div class="stat-box"><div class="num" id="dash-fu-urgent" style="color:#dc2626">—</div><div class="lbl">Sangat Segera</div></div>
+      <div class="stat-box"><div class="num" id="dash-fu-today">—</div><div class="lbl">Baru Hari Ini</div></div>
     </div>
     <div class="filter-tabs">
-      <button class="filter-tab active" onclick="dashFilter('semua',this)">Semua</button>
+      <button class="filter-tab active" onclick="dashFilter('semua',this)">Semua Role</button>
       <button class="filter-tab" onclick="dashFilter('security',this)">Security</button>
       <button class="filter-tab" onclick="dashFilter('driver',this)">Driver</button>
       <button class="filter-tab" onclick="dashFilter('cs',this)">CS</button>
-      <button class="filter-tab" onclick="dashFilter('followup',this)">Follow Up</button>
     </div>
     <div class="log-list" id="dash-list">
       <p style="text-align:center;color:var(--text3);padding:40px 0;font-size:14px">Memuat data...</p>
@@ -2525,6 +2570,11 @@ function csOnJenisLaporan() {
 async function submitCS() {
   if (!val('cs-pegawai')) { showToast('Pilih nama pegawai dulu'); return; }
   if (!val('cs-kegiatan')) { showToast('Pilih jenis kegiatan'); return; }
+  if (csState.fu === 'Y') {
+    if (!val('cs-prioritas')) { showToast('Pilih prioritas follow up'); return; }
+    if (!val('cs-detail-laporan').trim()) { showToast('Isi detail laporan follow up'); return; }
+    if (!val('cs-foto-fu')) { showToast('Foto bukti follow up wajib diisi'); return; }
+  }
 
   const checkedDetails = [...document.querySelectorAll('#cs-detail-list input:checked')].map(cb => {
     const dk = masterData.detailKegiatan.find(d => d.DetailKegiatanID === cb.value);
@@ -2541,10 +2591,9 @@ async function submitCS() {
     catatan: val('cs-catatan'),
     perluFollowUp: csState.fu,
     prioritas: val('cs-prioritas'),
-    jenisLaporan: val('cs-jenis-laporan'),
     detailLaporan: val('cs-detail-laporan'),
-    jumlahBarang: val('cs-jumlah'),
     foto: val('cs-foto'),
+    fotoFollowUp: val('cs-foto-fu'),
   };
 
   await doSubmit('submitCS', data, 'Data CS berhasil disimpan!');
@@ -2682,6 +2731,11 @@ function drvSetFU(v) {
 async function submitDriver() {
   if (!val('drv-pegawai')) { showToast('Pilih nama driver dulu'); return; }
   if (!val('drv-kegiatan')) { showToast('Pilih jenis kegiatan'); return; }
+  if (drvState.fu === 'Y') {
+    if (!val('drv-prioritas')) { showToast('Pilih prioritas follow up'); return; }
+    if (!val('drv-detail-laporan').trim()) { showToast('Isi detail laporan follow up'); return; }
+    if (!val('drv-foto-fu')) { showToast('Foto bukti follow up wajib diisi'); return; }
+  }
 
   const uraianChecked = [...document.querySelectorAll('#drv-uraian-list input:checked')].map(cb => cb.value).join(', ');
   const tipeLaporan = val('drv-tipe-laporan'); // 'Harian' / 'Bulanan' / ''
@@ -2726,6 +2780,7 @@ async function submitDriver() {
     jenisPajak: val('drv-jenis-pajak'),
     keteranganPajak: val('drv-ket-pajak'),
     perluFollowUp: drvState.fu,
+    prioritas: val('drv-prioritas'),
     detailLaporan: val('drv-detail-laporan'),
     fotoBBM: val('drv-foto-bbm'),
     fotoTambahan: val('drv-foto-rekap'),
@@ -2903,6 +2958,11 @@ function secSetStatus(v) {
 async function submitSecurity() {
   if (!val('sec-pegawai')) { showToast('Pilih nama pegawai dulu'); return; }
   if (!val('sec-kegiatan')) { showToast('Pilih jenis kegiatan'); return; }
+  if (secState.fu === 'Y') {
+    if (!val('sec-prioritas')) { showToast('Pilih prioritas follow up'); return; }
+    if (!val('sec-detail-laporan').trim()) { showToast('Isi detail laporan follow up'); return; }
+    if (!val('sec-foto-fu')) { showToast('Foto bukti follow up wajib diisi'); return; }
+  }
 
   // Ambil kegiatan piket yang dicentang + handle opsi "Lainnya"
   const piketCheckedItems = [...document.querySelectorAll('#sec-piket-list input:checked')];
@@ -2955,6 +3015,7 @@ async function submitSecurity() {
     kondisiRadiator: secState.kondisiRadiator,
     stokBBMGenset: val('sec-stok-bbm'),
     perluFollowUp: secState.fu,
+    prioritas: val('sec-prioritas'),
     detailLaporan: val('sec-detail-laporan'),
     fotoPiket: val('sec-foto-piket'),
     fotoSurat: val('sec-foto-surat'),
@@ -3102,7 +3163,9 @@ async function doSubmit(action, data, successMsg) {
 function dashFilter(filter, btn) {
   document.querySelectorAll('#screen-dashboard .filter-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  loadDashboard(filter);
+  // Filter client-side (data sudah dimuat semua follow up dari backend)
+  dashFilterRole = filter;
+  renderDash();
 }
 
 // ── Lookup helpers ────────────────────────────────────────────
@@ -3556,59 +3619,139 @@ function renderList(role, filter) {
 
 // ── Dashboard real data ───────────────────────────────────────
 async function loadDashboard(filter = 'semua') {
-  document.getElementById('dash-list').innerHTML = '<div class="list-loading">Memuat 15 data terbaru...</div>';
+  document.getElementById('dash-list').innerHTML = '<div class="list-loading">Memuat follow up...</div>';
   try {
+    // Default filter = 'followup' agar backend hanya kirim yang Open
     const result = await fetchJsonWithRetry(
       APPS_SCRIPT_URL
         + '?action=getData'
-        + '&dashboardFilter=' + encodeURIComponent(filter)
-        + '&limit=15'
+        + '&filter=followup'
+        + '&limit=50'
         + '&token=' + encodeURIComponent(currentUser?.token || '')
         + '&t=' + Date.now(),
       {},
       { retries: 2, timeoutMs: 30000, retryDelayMs: 800 }
     );
     dashData = result.rows || [];
-    const stats = result.stats || {};
-    document.getElementById('dash-total').textContent = stats.total ?? dashData.length;
-    document.getElementById('dash-fu').textContent = stats.followUp ?? dashData.filter(d => d.PerluFollowUp === 'Y').length;
-    document.getElementById('dash-today').textContent = stats.today ?? 0;
+    // Filter di sisi client kalau user tab role tertentu
+    dashFilterRole = filter;
+    renderDashStats();
     renderDash();
   } catch(e) {
     document.getElementById('dash-list').innerHTML = '<div class="list-loading">Gagal memuat data</div>';
   }
 }
 
+let dashFilterRole = 'semua';
+
+function renderDashStats() {
+  const today = new Date().toISOString().slice(0, 10);
+  const open = dashData.length;
+  const urgent = dashData.filter(d => String(d.Prioritas || '').toLowerCase().includes('sangat segera')).length;
+  const todayCount = dashData.filter(d => {
+    const ts = d.Timestamp ? new Date(d.Timestamp).toISOString().slice(0, 10) : '';
+    return ts === today;
+  }).length;
+  document.getElementById('dash-fu-open').textContent = open;
+  document.getElementById('dash-fu-urgent').textContent = urgent;
+  document.getElementById('dash-fu-today').textContent = todayCount;
+}
+
 function renderDash() {
   const icons = { Security:'🛡️', Driver:'🚗', CS:'🧹' };
-  const filtered = dashData || [];
   const list = document.getElementById('dash-list');
-  if (!filtered.length) { list.innerHTML = '<div class="list-loading">Tidak ada data</div>'; return; }
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Filter by role kalau tab tertentu
+  let filtered = dashData || [];
+  if (dashFilterRole !== 'semua') {
+    filtered = filtered.filter(d => String(d._role || '').toLowerCase() === dashFilterRole);
+  }
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="list-loading">🎉 Tidak ada follow up yang perlu ditindaklanjuti</div>';
+    return;
+  }
+
+  // Prioritas color/badge
+  const prioBadge = (p) => {
+    const pp = String(p || '').toLowerCase();
+    if (pp.includes('sangat segera')) return '<span class="badge" style="background:#fecaca;color:#991b1b">⚠ Sangat Segera</span>';
+    if (pp.includes('segera')) return '<span class="badge" style="background:#fed7aa;color:#9a3412">Segera</span>';
+    if (pp.includes('biasa')) return '<span class="badge" style="background:#e0e7ff;color:#3730a3">Biasa</span>';
+    return '<span class="badge badge-fu">Follow Up</span>';
+  };
+
   list.innerHTML = filtered.map(d => {
-    const role = (d._role||'').toLowerCase();
-    const ts   = d.Timestamp ? new Date(d.Timestamp).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
+    const role = String(d._role || '').toLowerCase();
+    const rowID = d.CSID || d.DriverLogID || d.SecurityID || d.ID || d['ID (Key)'] || d.IDKey || '';
+    const ts = d.Timestamp ? new Date(d.Timestamp).toLocaleString('id-ID', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
     const jkRaw = d.JenisKegiatan || d.Kegiatan || '-';
     let jk = jkRaw;
     if (role === 'cs') jk = lookupKegiatan(jkRaw);
     else if (role === 'driver') jk = lookupKegiatanDriver(jkRaw);
     const nama = lookupNama(d.NamaPegawai);
-    const fu   = d.PerluFollowUp === 'Y';
+    const detail = _s(d.DetailLaporan || '');
     const foto = getRowPhotoHtml(d);
+
+    const closeBtn = isAdmin ? `
+      <button class="photo-pick-btn" style="margin-top:8px;width:100%;background:#16a34a;color:#fff;border:none;padding:8px;border-radius:6px;font-size:13px;cursor:pointer"
+        onclick="promptCloseFollowUp('${rowID}','${role}','${nama.replace(/'/g,"&#39;")}')">
+        ✓ Tandai Sudah Ditangani
+      </button>` : '';
+
     return `
     <div class="list-item ${role}">
       <div class="li-row">
         <div class="li-main">
           <div class="li-row" style="margin-bottom:4px">
             <span class="li-name">${icons[d._role]||''} ${nama}</span>
-            <span class="badge ${fu?'badge-fu':'badge-ok'}">${fu?'Follow Up':'Selesai'}</span>
+            ${prioBadge(d.Prioritas)}
           </div>
           <div class="li-sub">${d._role} — ${jk}</div>
+          ${detail ? `<div class="li-sub" style="margin-top:4px;color:var(--text2);font-style:italic">"${detail}"</div>` : ''}
           <div class="li-meta">${ts}</div>
         </div>
         ${foto}
       </div>
+      ${closeBtn}
     </div>`;
   }).join('');
+}
+
+// ── Tandai Selesai Follow Up (admin only) ─────────────────────
+async function promptCloseFollowUp(rowID, role, nama) {
+  if (!rowID || !role) {
+    showToast('Data tidak valid');
+    return;
+  }
+  const catatan = prompt('Catatan tindakan yang dilakukan untuk follow up ini:\n\nLaporan dari: ' + nama);
+  if (catatan === null) return;
+  if (!confirm('Tandai follow up ini sebagai SUDAH DITANGANI?\n\nLaporan dari: ' + nama + '\nCatatan: ' + (catatan || '-'))) return;
+
+  setLoading(true);
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'closeFollowUp',
+        token: currentUser?.token || '',
+        data: { rowID: rowID, role: role, catatan: catatan.trim() },
+      }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      showToast('Follow up berhasil ditandai selesai');
+      // Reload dashboard
+      loadDashboard(dashFilterRole);
+    } else {
+      showToast('Gagal: ' + (result.error || 'tidak diketahui'));
+    }
+  } catch(e) {
+    showToast('Gagal menutup follow up: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
 }
 
 
