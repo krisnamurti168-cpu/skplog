@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
-<title>SOIMAH — Sistem Operasional Informasi Manajemen Aktivitas Harian</title>
+<title>SKP Log — PPPK</title>
 <meta name="description" content="Aplikasi Log Kegiatan Harian PPPK Balmon Yogyakarta">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -59,28 +59,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   transition: background .15s;
 }
 .back-btn:hover { background: var(--surface2); }
-
-/* ── Logo SOIMAH ── */
-.app-logo-full {
-  display: block;
-  width: 100%;
-  max-width: 340px;
-  height: auto;
-  margin: 0 auto 24px;
-}
-.app-logo-home {
-  display: block;
-  width: 100%;
-  max-width: 280px;
-  height: auto;
-  margin: 0 auto 12px;
-}
-.home-header { text-align: center; }
-.home-header .home-date {
-  font-size: 13px;
-  color: var(--text2);
-  margin-bottom: 14px;
-}
 
 /* ── Home ── */
 .home-header {
@@ -536,9 +514,6 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 @keyframes spin { to { transform: rotate(360deg); } }
 
 </style>
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
-<link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png">
 </head>
 <body>
 
@@ -547,11 +522,10 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ LOGIN ═════════════════════════════════════════════════ -->
 <div class="screen active" id="screen-login">
   <div class="login-wrap">
-    <div style="width:100%;max-width:420px">
-      <img src="soimah-logo.png" alt="SOIMAH — Sistem Operasional Informasi Manajemen Aktivitas Harian" class="app-logo-full">
-      <div class="login-card">
-        <h1>Masuk Akun</h1>
-        <p>Silakan login sesuai role sebelum mengisi log kegiatan.</p>
+    <div class="login-card">
+      <div class="logo">PPPK — Aplikasi Log Kegiatan</div>
+      <h1>Masuk Akun</h1>
+      <p>Silakan login sesuai role sebelum mengisi log kegiatan.</p>
 
       <div class="form-group">
         <label>Role <span class="req">*</span></label>
@@ -581,8 +555,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         </label>
       </div>
 
-        <button class="submit-btn" id="login-submit-btn" onclick="loginUser()">Masuk</button>
-      </div>
+      <button class="submit-btn" id="login-submit-btn" onclick="loginUser()">Masuk</button>
     </div>
   </div>
 </div>
@@ -590,8 +563,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ HOME ══════════════════════════════════════════════════ -->
 <div class="screen" id="screen-home">
   <div class="home-header">
-    <img src="soimah-logo.png" alt="SOIMAH" class="app-logo-home">
-    <p id="home-date" class="home-date"></p>
+    <div class="logo">PPPK — Aplikasi Log Kegiatan</div>
+    <h2>SKP Log</h2>
+    <p id="home-date"></p>
     <div class="auth-userbar">
       <div>
         <span>Login sebagai</span>
@@ -862,6 +836,14 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <div class="form-group">
         <label>Hari / Tanggal Bertugas</label>
         <input type="date" id="drv-hari">
+      </div>
+      <div class="form-group">
+        <label>Kegiatan yang Dilakukan</label>
+        <select id="drv-kegiatan-rekap"><option value="">— Pilih —</option></select>
+      </div>
+      <div class="form-group hidden" id="drv-rekap-lainnya-wrap">
+        <label>Kegiatan Lainnya</label>
+        <input type="text" id="drv-rekap-lainnya" placeholder="Tulis kegiatan...">
       </div>
       <div class="form-group">
         <label>Tahap Kegiatan</label>
@@ -2218,14 +2200,27 @@ function populateDropdowns() {
       return nama || plat || '-';
     });
   });
+  // Helper untuk ambil ID Keperluan Driver (support multiple field names di master sheet)
+  const keperluanIdFn = p => p.KepID || p.KeperluanDriverID || p.KeperluanID || p.ID || '';
+
   // Driver Kegiatan BBM — selalu append opsi "Lainnya" di akhir
-  fillSelect('drv-kegiatan-bbm', masterData.keperluanDriver, 'KepID', 'NamaKeperluan');
+  fillSelect('drv-kegiatan-bbm', masterData.keperluanDriver, keperluanIdFn, 'NamaKeperluan');
   const drvKegBBMEl = document.getElementById('drv-kegiatan-bbm');
   if (drvKegBBMEl && ![...drvKegBBMEl.options].some(o => o.text.toLowerCase().includes('lainnya'))) {
     const opt = document.createElement('option');
     opt.value = 'Lainnya';
     opt.textContent = 'Lainnya';
     drvKegBBMEl.appendChild(opt);
+  }
+
+  // Driver Kegiatan Rekapitulasi — sama pattern dengan BBM
+  fillSelect('drv-kegiatan-rekap', masterData.keperluanDriver, keperluanIdFn, 'NamaKeperluan');
+  const drvKegRekapEl = document.getElementById('drv-kegiatan-rekap');
+  if (drvKegRekapEl && ![...drvKegRekapEl.options].some(o => o.text.toLowerCase().includes('lainnya'))) {
+    const opt = document.createElement('option');
+    opt.value = 'Lainnya';
+    opt.textContent = 'Lainnya';
+    drvKegRekapEl.appendChild(opt);
   }
   // Keperluan Security — selalu append opsi "Lainnya" di akhir
   fillSelect('sec-keperluan', masterData.keperluanDriver, 'KepID', 'NamaKeperluan');
@@ -2249,7 +2244,7 @@ function fillSelect(id, items, valKey, labelFn) {
   el.innerHTML = '<option value="">— Pilih —</option>';
   items.forEach(item => {
     const opt = document.createElement('option');
-    opt.value = item[valKey];
+    opt.value = typeof valKey === 'function' ? valKey(item) : item[valKey];
     opt.textContent = typeof labelFn === 'function' ? labelFn(item) : item[labelFn];
     el.appendChild(opt);
   });
@@ -2653,6 +2648,17 @@ document.addEventListener('change', e => {
       if (t) t.value = '';
     }
   }
+  if (e.target.id === 'drv-kegiatan-rekap') {
+    const sel = e.target;
+    const txt = (sel.options[sel.selectedIndex] || {}).text || '';
+    const val = sel.value || '';
+    const isLainnya = txt.toLowerCase().includes('lainnya') || val.toLowerCase().includes('lainnya');
+    document.getElementById('drv-rekap-lainnya-wrap').classList.toggle('hidden', !isLainnya);
+    if (!isLainnya) {
+      const t = document.getElementById('drv-rekap-lainnya');
+      if (t) t.value = '';
+    }
+  }
 });
 
 function drvOnTahap() {
@@ -2764,6 +2770,8 @@ async function submitDriver() {
     kegiatanBBM: val('drv-kegiatan-bbm'),
     kegiatanBBMLainnya: val('drv-bbm-lainnya'),
     hari: val('drv-hari'),
+    kegiatanRekapitulasi: val('drv-kegiatan-rekap'),
+    kegiatanRekapitulasiLainnya: val('drv-rekap-lainnya'),
     tahapKegiatan: val('drv-tahap'),
     uraianKegiatan: uraianChecked,
     odometerAwal: val('drv-odometer-awal'),
