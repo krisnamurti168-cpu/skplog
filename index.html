@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
-<title>SKP Log — PPPK</title>
+<title>SOIMAH — Sistem Operasional Informasi Manajemen Aktivitas Harian</title>
 <meta name="description" content="Aplikasi Log Kegiatan Harian PPPK Balmon Yogyakarta">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -59,6 +59,28 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   transition: background .15s;
 }
 .back-btn:hover { background: var(--surface2); }
+
+/* ── Logo SOIMAH ── */
+.app-logo-full {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  margin: 0 auto 24px;
+}
+.app-logo-home {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  margin: 0 auto 12px;
+}
+.home-header { text-align: center; }
+.home-header .home-date {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 14px;
+}
 
 /* ── Home ── */
 .home-header {
@@ -514,6 +536,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 @keyframes spin { to { transform: rotate(360deg); } }
 
 </style>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png">
 </head>
 <body>
 
@@ -522,10 +547,11 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ LOGIN ═════════════════════════════════════════════════ -->
 <div class="screen active" id="screen-login">
   <div class="login-wrap">
-    <div class="login-card">
-      <div class="logo">PPPK — Aplikasi Log Kegiatan</div>
-      <h1>Masuk Akun</h1>
-      <p>Silakan login sesuai role sebelum mengisi log kegiatan.</p>
+    <div style="width:100%;max-width:420px">
+      <img src="soimah-logo.png" alt="SOIMAH — Sistem Operasional Informasi Manajemen Aktivitas Harian" class="app-logo-full">
+      <div class="login-card">
+        <h1>Masuk Akun</h1>
+        <p>Silakan login sesuai role sebelum mengisi log kegiatan.</p>
 
       <div class="form-group">
         <label>Role <span class="req">*</span></label>
@@ -555,7 +581,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         </label>
       </div>
 
-      <button class="submit-btn" id="login-submit-btn" onclick="loginUser()">Masuk</button>
+        <button class="submit-btn" id="login-submit-btn" onclick="loginUser()">Masuk</button>
+      </div>
     </div>
   </div>
 </div>
@@ -563,9 +590,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ HOME ══════════════════════════════════════════════════ -->
 <div class="screen" id="screen-home">
   <div class="home-header">
-    <div class="logo">PPPK — Aplikasi Log Kegiatan</div>
-    <h2>SKP Log</h2>
-    <p id="home-date"></p>
+    <img src="soimah-logo.png" alt="SOIMAH" class="app-logo-home">
+    <p id="home-date" class="home-date"></p>
     <div class="auth-userbar">
       <div>
         <span>Login sebagai</span>
