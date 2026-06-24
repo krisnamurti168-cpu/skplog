@@ -2217,10 +2217,12 @@ function populateDropdowns() {
     masterData.pegawai.filter(p => p.Role==='Driver' && /^PG/i.test(String(p.PegawaiID||''))),
     'PegawaiID', 'Nama');
   // Driver Kendaraan — skip "undefined" kalau Plat kosong
+  // Helper untuk ambil ID Kendaraan (support multiple field names: KendaraanID / KendaraanDinasID / ID)
   const kend = masterData.kendaraanDinas;
+  const kendIdFn = p => p.KendaraanID || p.KendaraanDinasID || p.ID || '';
   ['drv-bbm-kendaraan','drv-rekap-kendaraan','drv-kondisi-kendaraan','sec-kendaraan-dinas'].forEach(id => {
-    fillSelect(id, kend, 'KendaraanID', p => {
-      const nama = (p.NamaKendaraan || p.Nama || '').toString().trim();
+    fillSelect(id, kend, kendIdFn, p => {
+      const nama = (p.NamaKendaraan || p.DisplayName || p.Nama || '').toString().trim();
       const plat = (p.Plat || p.PlatNomor || '').toString().trim();
       if (nama && plat) return nama + ' (' + plat + ')';
       return nama || plat || '-';
@@ -3274,21 +3276,28 @@ function lookupKendaraan(id) {
   const s = _s(id);
   if (!s) return '-';
   try {
+    // Match ID dengan fallback nama kolom (KendaraanID atau KendaraanDinasID di sheet)
     let k = (masterData.kendaraanDinas||[]).find(x =>
       _s(x.KendaraanID) === s ||
-      _s(x.NamaKendaraan) === s
+      _s(x.KendaraanDinasID) === s ||
+      _s(x.ID) === s ||
+      _s(x.NamaKendaraan) === s ||
+      _s(x.DisplayName) === s
     );
     if (!k) {
-      // Match plat nomor (normalize spasi)
+      // Match plat nomor (normalize spasi, support Plat atau PlatNomor)
       const sNorm = s.replace(/\s/g, '').toLowerCase();
       k = (masterData.kendaraanDinas||[]).find(x => {
-        const plat = _s(x.Plat).replace(/\s/g, '').toLowerCase();
+        const platStr = _s(x.Plat) || _s(x.PlatNomor);
+        const plat = platStr.replace(/\s/g, '').toLowerCase();
         return plat && plat === sNorm;
       });
     }
     if (k) {
-      const plat = _s(k.Plat);
-      return _s(k.NamaKendaraan) + (plat ? ' (' + plat + ')' : '');
+      // Plat: support kedua kemungkinan nama kolom
+      const plat = _s(k.Plat) || _s(k.PlatNomor);
+      const nama = _s(k.NamaKendaraan) || _s(k.DisplayName);
+      return nama + (plat ? ' (' + plat + ')' : '');
     }
     return s;
   } catch(e) { return s; }
@@ -3353,7 +3362,8 @@ function toDriveThumbUrl(url, size = 180) {
 function getPrimaryPhotoUrlFromRow(r) {
   const candidates = [
     r._fotoThumb, r._foto, r.Foto,
-    r.FotoBBM, r.FotoTambahan, r.FotoKondisiKendaraan, r.FotoFollowUp,
+    r.FotoBBM, r.FotoKebersihanDalam, r.FotoKebersihanLuar,
+    r.FotoTambahan, r.FotoKondisiKendaraan, r.FotoFollowUp,
     r.FotoPiket, r.FotoSurat, r.FotoGenset
   ];
   return candidates.find(v => v && String(v).trim()) || '';
@@ -3362,7 +3372,8 @@ function getPrimaryPhotoUrlFromRow(r) {
 function getOpenPhotoUrlFromRow(r) {
   const candidates = [
     r._fotoOpen, r._foto, r.Foto,
-    r.FotoBBM, r.FotoTambahan, r.FotoKondisiKendaraan, r.FotoFollowUp,
+    r.FotoBBM, r.FotoKebersihanDalam, r.FotoKebersihanLuar,
+    r.FotoTambahan, r.FotoKondisiKendaraan, r.FotoFollowUp,
     r.FotoPiket, r.FotoSurat, r.FotoGenset
   ];
   return candidates.find(v => v && String(v).trim()) || '';
