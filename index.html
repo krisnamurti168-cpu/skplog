@@ -2216,17 +2216,17 @@ function populateDropdowns() {
   fillSelect('drv-pegawai',
     masterData.pegawai.filter(p => p.Role==='Driver' && /^PG/i.test(String(p.PegawaiID||''))),
     'PegawaiID', 'Nama');
-  // Driver Kendaraan — skip "undefined" kalau Plat kosong
-  // Helper untuk ambil ID Kendaraan (support multiple field names: KendaraanID / KendaraanDinasID / ID)
+  // Driver Kendaraan — pakai NamaKendaraan langsung (di sheet sudah include plat)
+  // Helper untuk ambil ID Kendaraan (support multiple field names)
   const kend = masterData.kendaraanDinas;
-  const kendIdFn = p => p.KendaraanID || p.KendaraanDinasID || p.ID || '';
+  const kendIdFn = p => p.KendaraanDinasID || p.KendaraanID || p.ID || '';
+  const kendLabelFn = p => {
+    const nama = (p.NamaKendaraan || p.DisplayName || p.Nama || '').toString().trim();
+    const plat = (p.PlatNomor || p.Plat || '').toString().trim();
+    return nama || plat || '-';
+  };
   ['drv-bbm-kendaraan','drv-rekap-kendaraan','drv-kondisi-kendaraan','sec-kendaraan-dinas'].forEach(id => {
-    fillSelect(id, kend, kendIdFn, p => {
-      const nama = (p.NamaKendaraan || p.DisplayName || p.Nama || '').toString().trim();
-      const plat = (p.Plat || p.PlatNomor || '').toString().trim();
-      if (nama && plat) return nama + ' (' + plat + ')';
-      return nama || plat || '-';
-    });
+    fillSelect(id, kend, kendIdFn, kendLabelFn);
   });
   // Helper untuk ambil ID Keperluan Driver (support multiple field names di master sheet)
   const keperluanIdFn = p => p.KepID || p.KeperluanDriverID || p.KeperluanID || p.ID || '';
@@ -3278,8 +3278,8 @@ function lookupKendaraan(id) {
   try {
     // Match ID dengan fallback nama kolom (KendaraanID atau KendaraanDinasID di sheet)
     let k = (masterData.kendaraanDinas||[]).find(x =>
-      _s(x.KendaraanID) === s ||
       _s(x.KendaraanDinasID) === s ||
+      _s(x.KendaraanID) === s ||
       _s(x.ID) === s ||
       _s(x.NamaKendaraan) === s ||
       _s(x.DisplayName) === s
@@ -3288,16 +3288,15 @@ function lookupKendaraan(id) {
       // Match plat nomor (normalize spasi, support Plat atau PlatNomor)
       const sNorm = s.replace(/\s/g, '').toLowerCase();
       k = (masterData.kendaraanDinas||[]).find(x => {
-        const platStr = _s(x.Plat) || _s(x.PlatNomor);
+        const platStr = _s(x.PlatNomor) || _s(x.Plat);
         const plat = platStr.replace(/\s/g, '').toLowerCase();
         return plat && plat === sNorm;
       });
     }
     if (k) {
-      // Plat: support kedua kemungkinan nama kolom
-      const plat = _s(k.Plat) || _s(k.PlatNomor);
-      const nama = _s(k.NamaKendaraan) || _s(k.DisplayName);
-      return nama + (plat ? ' (' + plat + ')' : '');
+      // Return NamaKendaraan SAJA (di sheet sudah include plat misal "Inova Zenix - AB1135IA")
+      // Fallback ke DisplayName atau Plat kalau NamaKendaraan kosong
+      return _s(k.NamaKendaraan) || _s(k.DisplayName) || _s(k.PlatNomor) || _s(k.Plat) || s;
     }
     return s;
   } catch(e) { return s; }
