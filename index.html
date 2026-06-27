@@ -682,6 +682,14 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     </div>
     <span class="arrow">›</span>
   </div>
+  <div class="dashboard-card" id="admin-download-card" style="display:none" onclick="openAdminDownloadModal()">
+    <span class="icon">📥</span>
+    <div class="info">
+      <b>Download Laporan SKP</b>
+      <span>Export data per pegawai, role & bulan</span>
+    </div>
+    <span class="arrow">›</span>
+  </div>
 </div>
 
 <!-- ══ CS FORM ════════════════════════════════════════════════ -->
@@ -1587,6 +1595,38 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   </div>
 </div>
 
+
+<!-- ══ ADMIN DOWNLOAD MODAL ══════════════════════════════════ -->
+<div class="dl-modal-overlay hidden" id="adl-modal-overlay" onclick="if(event.target===this)closeAdminDownloadModal()">
+  <div class="dl-modal">
+    <h3>📥 Download Laporan SKP <button class="dl-close" onclick="closeAdminDownloadModal()">×</button></h3>
+
+    <span class="dl-section-label">Nama Pegawai</span>
+    <div style="margin-bottom:16px">
+      <select id="adl-pegawai" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-family:var(--font);font-size:14px;appearance:none;-webkit-appearance:none">
+        <option value="">— Pilih Pegawai —</option>
+      </select>
+    </div>
+
+    <span class="dl-section-label">Role / Jenis Data</span>
+    <div class="dl-chip-group" id="adl-role-group">
+      <button class="dl-chip active" data-val="security" onclick="adlSetRole('security',this)">🛡️ Security</button>
+      <button class="dl-chip" data-val="driver" onclick="adlSetRole('driver',this)">🚗 Driver</button>
+      <button class="dl-chip" data-val="cs" onclick="adlSetRole('cs',this)">🧹 CS / OB</button>
+    </div>
+
+    <span class="dl-section-label">Bulan</span>
+    <div class="dl-chip-group" id="adl-bulan-group"></div>
+
+    <span class="dl-section-label">Jenis Kegiatan</span>
+    <div class="dl-chip-group" id="adl-jenis-group"></div>
+
+    <button class="dl-btn" id="adl-process-btn" onclick="processAdminDownload()">
+      <span>📥</span><span id="adl-btn-label">Proses & Download</span>
+    </button>
+  </div>
+</div>
+
 <!-- Camera Modal -->
 <div class="cam-modal hidden" id="cam-modal">
   <div class="cam-status" id="cam-status">Memuat kamera...</div>
@@ -2055,6 +2095,9 @@ function updateAuthUI() {
   document.querySelectorAll('.role-card.security').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'security'));
   document.querySelectorAll('.role-card.driver').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'driver'));
   document.querySelectorAll('.role-card.cs').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'cs'));
+  // Admin-only: tampilkan card download
+  const adminDlCard = document.getElementById('admin-download-card');
+  if (adminDlCard) adminDlCard.style.display = isAdmin ? '' : 'none';
 }
 
 function guardRoleAccess(role) {
@@ -3982,152 +4025,220 @@ if (document.readyState === 'loading') {
 // ══════════════════════════════════════════════════════════════
 
 // Config: kolom per jenis kegiatan
+// Helper: ambil nilai dari row dengan multiple kemungkinan nama kolom
+function pickVal(r, ...keys) {
+  for (const k of keys) { if (r[k] != null && String(r[k]).trim() !== '') return r[k]; }
+  return '';
+}
+
+// Helper: format jam - handle Date object dari sheet (misal 1899-12-29T23:17:00Z)
+function fmtJam(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  // Sudah format HH:MM atau HH:MM:SS
+  if (/^\d{1,2}:\d{2}/.test(s)) return s.substring(0, 5);
+  // ISO date string dari Google Sheets (time stored as date)
+  const d = new Date(s);
+  if (!isNaN(d)) {
+    const h = String(d.getUTCHours()).padStart(2, '0');
+    const m = String(d.getUTCMinutes()).padStart(2, '0');
+    return h + ':' + m;
+  }
+  return s;
+}
+
+// Helper: resolve UraianKegiatan IDs ke nama lengkap
+function resolveUraian(val) {
+  const s = _s(val);
+  if (!s) return '';
+  return s.split(',').map(part => {
+    const t = _s(part);
+    // Kalau format UK001 dst, lookup ke masterData
+    if (/^UK\d+$/i.test(t)) {
+      const u = (masterData.uraianKegiatan || []).find(x =>
+        _s(x.UraianID) === t || _s(x.UraianKegiatanID) === t
+      );
+      return u ? _s(u.UraianKegiatan || u.Uraian || u.NamaUraian || t) : t;
+    }
+    return t;
+  }).filter(Boolean).join('; ');
+}
+
+// Helper: resolve jenis kegiatan CS (KG004 → nama lengkap)
+function resolveJenisCS(val) {
+  const s = _s(val);
+  if (!s) return s;
+  const k = (masterData.jenisKegiatanCS || []).find(x =>
+    _s(x.KegiatanID) === s || _s(x.NamaKegiatan) === s
+  );
+  return k ? _s(k.NamaKegiatan) : s;
+}
+
 const LAPORAN_CONFIG = {
   security: {
     'Piket Keamanan': {
       label: 'Piket Keamanan',
+      // match: JenisKegiatan = 'Piket Keamanan' (string langsung)
+      matchFn: r => _s(r.JenisKegiatan || r.Kegiatan || '').toLowerCase().includes('piket'),
       cols: [
-        { key: 'Tanggal',              label: 'Tanggal' },
-        { key: 'Kantor',               label: 'Kantor' },
-        { key: 'Shift',                label: 'Shift' },
-        { key: 'KegiatanPiket',        label: 'Kegiatan Piket Dilakukan', fn: v => lookupKegiatanPiket(v) },
-        { key: 'PerluFollowUp',        label: 'Ada Follow Up' },
-        { key: 'DetailLaporan',        label: 'Detail Laporan/Kejadian' },
-        { key: '_foto',                label: 'Link Foto' },
+        { label: 'Tanggal',                  fn: r => r.Tanggal },
+        { label: 'Kantor',                   fn: r => r.Kantor },
+        { label: 'Shift',                    fn: r => r.Shift || r.ShiftLainnya },
+        { label: 'Kegiatan Piket Dilakukan', fn: r => lookupKegiatanPiket(_s(r.KegiatanPiketDilakukan || r.KegiatanPiket || '')) },
+        { label: 'Ada Follow Up',            fn: r => _s(r.PerluFollowUp) === 'Y' ? 'Ya' : 'Tidak' },
+        { label: 'Detail Laporan/Kejadian',  fn: r => r.DetailLaporan },
+        { label: 'Link Foto',                fn: r => r._fotoOpen || r._foto || r.Foto || r.FotoPiket },
       ]
     },
     'Pencatatan Kendaraan': {
       label: 'Pencatatan Kendaraan',
+      matchFn: r => _s(r.JenisKegiatan || r.Kegiatan || '').toLowerCase().includes('pencatatan'),
       cols: [
-        { key: 'Tanggal',              label: 'Tanggal' },
-        { key: 'Kantor',               label: 'Kantor' },
-        { key: 'StatusKendaraan',      label: 'Status (Masuk/Keluar)' },
-        { key: 'TipeKendaraan',        label: 'Tipe Kendaraan' },
-        { key: 'KendaraanDinas',       label: 'Kendaraan Dinas', fn: v => lookupKendaraan(v) },
-        { key: 'JenisKendaraanManual', label: 'Jenis Kendaraan (Non-Dinas)' },
-        { key: 'PlatNomor',            label: 'Plat Nomor' },
-        { key: 'JamMasuk',             label: 'Jam Masuk' },
-        { key: 'JamKeluar',            label: 'Jam Keluar' },
-        { key: 'Keperluan',            label: 'Keperluan (Keluar)', fn: v => lookupKeperluan(v) },
-        { key: 'BBMTersisaKendaraan',  label: 'BBM Tersisa (Masuk)' },
+        { label: 'Tanggal',                    fn: r => r.Tanggal },
+        { label: 'Kantor',                     fn: r => r.Kantor },
+        { label: 'Status (Masuk/Keluar)',       fn: r => r.StatusKendaraan },
+        { label: 'Tipe Kendaraan',             fn: r => r.TipeKendaraan },
+        { label: 'Kendaraan Dinas',            fn: r => lookupKendaraan(_s(r.KendaraanDinas)) },
+        { label: 'Jenis Kendaraan (Non-Dinas)',fn: r => r.JenisKendaraanManual },
+        { label: 'Plat Nomor',                 fn: r => r.PlatNomor },
+        { label: 'Jam Masuk',                  fn: r => fmtJam(r.JamMasuk) },
+        { label: 'Jam Keluar',                 fn: r => fmtJam(r.JamKeluar) },
+        { label: 'Keperluan (Keluar)',          fn: r => lookupKeperluan(_s(r.Keperluan)) },
+        { label: 'BBM Tersisa (Masuk)',        fn: r => pickVal(r,'BBMTersisaKendaraan','BBMTersisa','BBMMasuk') },
       ]
     },
     'Surat dan Paket': {
       label: 'Surat dan Paket',
+      matchFn: r => _s(r.JenisKegiatan || r.Kegiatan || '').toLowerCase().includes('surat'),
       cols: [
-        { key: 'Tanggal',          label: 'Tanggal' },
-        { key: 'Kantor',           label: 'Kantor' },
-        { key: 'JenisPaket',       label: 'Jenis (Surat/Paket)' },
-        { key: 'Pengirim',         label: 'Pengirim' },
-        { key: 'Penerima',         label: 'Penerima' },
-        { key: 'Jumlah',           label: 'Jumlah' },
-        { key: 'KeteranganPaket',  label: 'Keterangan (Pribadi/Dinas)' },
-        { key: 'StatusPengiriman', label: 'Status Pengiriman' },
+        { label: 'Tanggal',                    fn: r => r.Tanggal },
+        { label: 'Kantor',                     fn: r => r.Kantor },
+        { label: 'Jenis (Surat/Paket)',        fn: r => r.JenisPaket },
+        { label: 'Pengirim',                   fn: r => r.Pengirim },
+        { label: 'Penerima',                   fn: r => r.Penerima },
+        { label: 'Jumlah',                     fn: r => r.Jumlah },
+        { label: 'Keterangan (Pribadi/Dinas)', fn: r => r.KeteranganPaket },
+        { label: 'Status Pengiriman',          fn: r => r.StatusPengiriman },
       ]
     },
     'Pengecekan Genset': {
       label: 'Pengecekan Genset',
+      matchFn: r => _s(r.JenisKegiatan || r.Kegiatan || '').toLowerCase().includes('genset'),
       cols: [
-        { key: 'Tanggal',        label: 'Tanggal' },
-        { key: 'Kantor',         label: 'Kantor' },
-        { key: 'KondisiAccu',    label: 'Kondisi Accu' },
-        { key: 'KondisiRadiator',label: 'Kondisi Radiator' },
-        { key: 'StokBBMGenset',  label: 'Stok BBM Genset' },
-        { key: '_foto',          label: 'Link Foto' },
+        { label: 'Tanggal',         fn: r => r.Tanggal },
+        { label: 'Kantor',          fn: r => r.Kantor },
+        { label: 'Kondisi Accu',    fn: r => r.KondisiAccu },
+        { label: 'Kondisi Radiator',fn: r => r.KondisiRadiator },
+        { label: 'Stok BBM Genset', fn: r => r.StokBBMGenset },
+        { label: 'Link Foto',       fn: r => r._fotoOpen || r._foto || r.Foto || r.FotoGenset },
       ]
     },
   },
   driver: {
     'Penggunaan BBM Kendaraan Dinas': {
       label: 'Penggunaan BBM',
+      matchFn: r => _s(r.JenisKegiatan || '').toLowerCase().includes('bbm'),
       cols: [
-        { key: 'Tanggal',         label: 'Tanggal' },
-        { key: 'KendaraanDinas',  label: 'Kendaraan Dinas', fn: v => lookupKendaraan(v) },
-        { key: 'TipeKegiatan',    label: 'Tipe Kegiatan (Umum/Tusi)' },
-        { key: 'NomorST',         label: 'Nomor Surat Tugas' },
-        { key: 'NominalBBM',      label: 'Nominal BBM (Rp)' },
-        { key: 'HargaPerLiter',   label: 'Harga per Liter (Rp)' },
-        { key: 'OdometerValue',   label: 'KM Odometer' },
-        { key: 'KegiatanBBM',     label: 'Kegiatan', fn: v => lookupKeperluan(v) },
-        { key: 'KegiatanBBMLainnya', label: 'Kegiatan Lainnya' },
-        { key: 'FotoBBM',         label: 'Link Foto Struk' },
+        { label: 'Tanggal',              fn: r => r.Tanggal },
+        { label: 'Kendaraan Dinas',      fn: r => lookupKendaraan(_s(r.KendaraanDinas)) },
+        { label: 'Tipe Kegiatan',        fn: r => r.TipeKegiatan },
+        { label: 'Nomor Surat Tugas',    fn: r => r.NomorST },
+        { label: 'Nominal BBM (Rp)',     fn: r => r.NominalBBM },
+        { label: 'Harga per Liter (Rp)', fn: r => r.HargaPerLiter },
+        { label: 'KM Odometer',          fn: r => pickVal(r,'OdometerValue','Odometer') },
+        { label: 'Kegiatan',             fn: r => lookupKeperluan(_s(r.KegiatanBBM)) },
+        { label: 'Kegiatan Lainnya',     fn: r => r.KegiatanBBMLainnya },
+        { label: 'Link Foto Struk',      fn: r => r._fotoOpen || r._foto || r.FotoBBM },
       ]
     },
     'Rekapitulasi Penggunaan Kendaraan Dinas': {
       label: 'Rekapitulasi Kendaraan',
+      matchFn: r => _s(r.JenisKegiatan || '').toLowerCase().includes('rekapitulasi'),
       cols: [
-        { key: 'Tanggal',                    label: 'Tanggal' },
-        { key: 'KendaraanDinas',             label: 'Kendaraan Dinas', fn: v => lookupKendaraan(v) },
-        { key: 'KegiatanRekapitulasi',       label: 'Kegiatan yang Dilakukan', fn: v => lookupKeperluan(v) },
-        { key: 'KegiatanRekapitulasiLainnya',label: 'Kegiatan Lainnya' },
-        { key: 'TahapKegiatan',              label: 'Tahap Kegiatan' },
-        { key: 'UraianKegiatan',             label: 'Uraian Kegiatan' },
-        { key: 'OdometerAwal',               label: 'Odometer Awal (KM)' },
-        { key: 'OdometerAkhir',              label: 'Odometer Akhir (KM)' },
+        { label: 'Tanggal',                    fn: r => r.Tanggal },
+        { label: 'Kendaraan Dinas',            fn: r => lookupKendaraan(_s(r.KendaraanDinas)) },
+        { label: 'Kegiatan yang Dilakukan',    fn: r => lookupKeperluan(_s(r.KegiatanRekapitulasi)) },
+        { label: 'Kegiatan Lainnya',           fn: r => r.KegiatanRekapitulasiLainnya },
+        { label: 'Tahap Kegiatan',             fn: r => r.TahapKegiatan },
+        // Uraian: resolve UK001 → nama lengkap
+        { label: 'Uraian Kegiatan',            fn: r => resolveUraian(r.UraianKegiatan) },
+        { label: 'Odometer Awal (KM)',         fn: r => r.OdometerAwal },
+        { label: 'Odometer Akhir (KM)',        fn: r => r.OdometerAkhir },
       ]
     },
     'Laporan Kondisi Kendaraan Dinas Roda Empat': {
       label: 'Kondisi Kendaraan',
+      matchFn: r => _s(r.JenisKegiatan || '').toLowerCase().includes('kondisi'),
       cols: [
-        { key: 'Tanggal',                   label: 'Tanggal' },
-        { key: 'KendaraanDinas',            label: 'Kendaraan Dinas', fn: v => lookupKendaraan(v) },
-        { key: 'TipeLaporanKondisi',        label: 'Tipe Laporan (Harian/Bulanan)' },
-        { key: 'FotoKebersihanDalam',       label: 'Link Foto Kebersihan Dalam' },
-        { key: 'FotoKebersihanLuar',        label: 'Link Foto Kebersihan Luar' },
-        { key: 'ItemKebersihan',            label: 'Item Kebersihan ✓ (Bulanan)' },
-        { key: 'ItemFungsiKeselamatan',     label: 'Fungsi Keselamatan ✓ (Bulanan)' },
-        { key: 'ItemKelengkapanKendaraan',  label: 'Kelengkapan Kendaraan ✓ (Bulanan)' },
-        { key: 'ItemKelengkapanAdministrasi',label:'Kelengkapan Administrasi ✓ (Bulanan)' },
-        { key: 'OdometerValue',             label: 'Odometer (KM)' },
-        { key: 'JadwalKMServis',            label: 'KM Servis Berikutnya' },
-        { key: 'KeteranganServis',          label: 'Keterangan Servis' },
-        { key: 'TanggalJatuhTempoPajak',    label: 'Jatuh Tempo Pajak' },
+        { label: 'Tanggal',                        fn: r => r.Tanggal },
+        { label: 'Kendaraan Dinas',                fn: r => lookupKendaraan(_s(r.KendaraanDinas)) },
+        { label: 'Tipe Laporan (Harian/Bulanan)',  fn: r => r.TipeLaporanKondisi },
+        { label: 'Link Foto Kebersihan Dalam',     fn: r => r.FotoKebersihanDalam },
+        { label: 'Link Foto Kebersihan Luar',      fn: r => r.FotoKebersihanLuar },
+        { label: 'Item Kebersihan ✓ (Bulanan)',    fn: r => r.ItemKebersihan },
+        { label: 'Fungsi Keselamatan ✓ (Bulanan)',fn: r => r.ItemFungsiKeselamatan },
+        { label: 'Kelengkapan Kendaraan ✓',       fn: r => r.ItemKelengkapanKendaraan },
+        { label: 'Kelengkapan Administrasi ✓',    fn: r => r.ItemKelengkapanAdministrasi },
+        { label: 'Odometer (KM)',                  fn: r => pickVal(r,'OdometerValue','Odometer') },
+        { label: 'KM Servis Berikutnya',           fn: r => r.JadwalKMServis },
+        { label: 'Keterangan Servis',              fn: r => r.KeteranganServis },
+        { label: 'Jatuh Tempo Pajak',              fn: r => r.TanggalJatuhTempoPajak },
       ]
     },
   },
   cs: {
+    // CS: JenisKegiatan di sheet berisi KegiatanID (KG004 dst), bukan nama
+    // matchFn harus resolve dulu
     'Monitoring Kebersihan & Pembersihan Rutin': {
       label: 'Monitoring Kebersihan',
+      matchFn: r => { const n = resolveJenisCS(r.Kegiatan || r.JenisKegiatan || ''); return n.toLowerCase().includes('monitoring') || n.toLowerCase().includes('rutin'); },
       cols: [
-        { key: 'Tanggal',                  label: 'Tanggal' },
-        { key: 'Kantor',                   label: 'Kantor' },
-        { key: 'Lokasi',                   label: 'Lokasi', fn: v => lookupLokasi(v) },
-        { key: 'DetailKegiatanDilakukan',  label: 'Detail Kegiatan Dilakukan', fn: v => lookupDetailKegiatan(v) },
-        { key: 'Catatan',                  label: 'Catatan' },
-        { key: '_foto',                    label: 'Link Foto' },
+        { label: 'Tanggal',                  fn: r => r.Tanggal },
+        { label: 'Jenis Kegiatan',           fn: r => resolveJenisCS(r.Kegiatan || r.JenisKegiatan || '') },
+        { label: 'Kantor',                   fn: r => r.Kantor },
+        { label: 'Lokasi',                   fn: r => lookupLokasi(_s(r.Lokasi)) },
+        { label: 'Detail Kegiatan Dilakukan',fn: r => lookupDetailKegiatan(_s(r.DetailKegiatanDilakukan)) },
+        { label: 'Catatan',                  fn: r => r.Catatan },
+        { label: 'Link Foto',                fn: r => r._fotoOpen || r._foto || r.Foto },
       ]
     },
     'Pembersihan Rutin Kamar Mandi': {
       label: 'Kebersihan Kamar Mandi',
+      matchFn: r => { const n = resolveJenisCS(r.Kegiatan || r.JenisKegiatan || ''); return n.toLowerCase().includes('kamar mandi'); },
       cols: [
-        { key: 'Tanggal',                  label: 'Tanggal' },
-        { key: 'Kantor',                   label: 'Kantor' },
-        { key: 'Lokasi',                   label: 'Lokasi', fn: v => lookupLokasi(v) },
-        { key: 'DetailKegiatanDilakukan',  label: 'Detail Kegiatan Dilakukan', fn: v => lookupDetailKegiatan(v) },
-        { key: 'Catatan',                  label: 'Catatan' },
-        { key: '_foto',                    label: 'Link Foto' },
+        { label: 'Tanggal',                  fn: r => r.Tanggal },
+        { label: 'Jenis Kegiatan',           fn: r => resolveJenisCS(r.Kegiatan || r.JenisKegiatan || '') },
+        { label: 'Kantor',                   fn: r => r.Kantor },
+        { label: 'Lokasi',                   fn: r => lookupLokasi(_s(r.Lokasi)) },
+        { label: 'Detail Kegiatan Dilakukan',fn: r => lookupDetailKegiatan(_s(r.DetailKegiatanDilakukan)) },
+        { label: 'Catatan',                  fn: r => r.Catatan },
+        { label: 'Link Foto',                fn: r => r._fotoOpen || r._foto || r.Foto },
       ]
     },
     'Kegiatan Vakum': {
       label: 'Kegiatan Vakum',
+      matchFn: r => { const n = resolveJenisCS(r.Kegiatan || r.JenisKegiatan || ''); return n.toLowerCase().includes('vakum'); },
       cols: [
-        { key: 'Tanggal',                  label: 'Tanggal' },
-        { key: 'Kantor',                   label: 'Kantor' },
-        { key: 'Lokasi',                   label: 'Lokasi', fn: v => lookupLokasi(v) },
-        { key: 'DetailKegiatanDilakukan',  label: 'Detail Kegiatan Dilakukan', fn: v => lookupDetailKegiatan(v) },
-        { key: 'Catatan',                  label: 'Catatan' },
-        { key: '_foto',                    label: 'Link Foto' },
+        { label: 'Tanggal',                  fn: r => r.Tanggal },
+        { label: 'Jenis Kegiatan',           fn: r => resolveJenisCS(r.Kegiatan || r.JenisKegiatan || '') },
+        { label: 'Kantor',                   fn: r => r.Kantor },
+        { label: 'Lokasi',                   fn: r => lookupLokasi(_s(r.Lokasi)) },
+        { label: 'Detail Kegiatan Dilakukan',fn: r => lookupDetailKegiatan(_s(r.DetailKegiatanDilakukan)) },
+        { label: 'Catatan',                  fn: r => r.Catatan },
+        { label: 'Link Foto',                fn: r => r._fotoOpen || r._foto || r.Foto },
       ]
     },
     'Pemeliharaan Transportable Slave': {
       label: 'Pemeliharaan Slave',
+      matchFn: r => { const n = resolveJenisCS(r.Kegiatan || r.JenisKegiatan || ''); return n.toLowerCase().includes('slave'); },
       cols: [
-        { key: 'Tanggal',                  label: 'Tanggal' },
-        { key: 'Kantor',                   label: 'Kantor' },
-        { key: 'Lokasi',                   label: 'Lokasi', fn: v => lookupLokasi(v) },
-        { key: 'DetailKegiatanDilakukan',  label: 'Detail Kegiatan Dilakukan', fn: v => lookupDetailKegiatan(v) },
-        { key: 'Catatan',                  label: 'Catatan' },
-        { key: '_foto',                    label: 'Link Foto' },
+        { label: 'Tanggal',                  fn: r => r.Tanggal },
+        { label: 'Jenis Kegiatan',           fn: r => resolveJenisCS(r.Kegiatan || r.JenisKegiatan || '') },
+        { label: 'Kantor',                   fn: r => r.Kantor },
+        { label: 'Lokasi',                   fn: r => lookupLokasi(_s(r.Lokasi)) },
+        { label: 'Detail Kegiatan Dilakukan',fn: r => lookupDetailKegiatan(_s(r.DetailKegiatanDilakukan)) },
+        { label: 'Catatan',                  fn: r => r.Catatan },
+        { label: 'Link Foto',                fn: r => r._fotoOpen || r._foto || r.Foto },
       ]
     },
   }
@@ -4270,28 +4381,28 @@ async function processDownload() {
       const cfg = jenisMap[jk];
       if (!cfg) return;
 
-      // Filter baris sesuai jenis kegiatan
-      const rowsJK = rowsByBulan.filter(r => {
-        const jkRaw = _s(r.JenisKegiatan || r.Kegiatan || '');
-        return jkRaw === jk || jkRaw.toLowerCase().includes(jk.toLowerCase().substring(0, 15));
-      });
+      // Filter baris pakai matchFn (robust, support ID maupun nama)
+      const rowsJK = rowsByBulan.filter(r => cfg.matchFn ? cfg.matchFn(r) : false);
 
-      // Build array data: [header, ...rows]
+      // Build array data pakai fn(r) — bukan r[key] lagi
       const header = cfg.cols.map(c => c.label);
       const rows = rowsJK.map(r => {
         return cfg.cols.map(c => {
-          let val = r[c.key] != null ? r[c.key] : '';
-          // Apply lookup function kalau ada
-          if (c.fn && val) val = c.fn(val);
+          let val = c.fn ? c.fn(r) : '';
+          if (val == null) val = '';
           // Format tanggal
-          if (c.key === 'Tanggal' && val) {
+          if (c.label === 'Tanggal' && val) {
             const d = new Date(val);
             if (!isNaN(d)) val = d.toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
           }
+          // Format angka nominal
+          if (c.label.includes('(Rp)') && val && !isNaN(Number(val))) {
+            val = Number(val).toLocaleString('id-ID');
+          }
           // Kosongkan nilai undefined/null/NaN
-          const s = String(val ?? '').trim().toLowerCase();
-          if (s === 'undefined' || s === 'null' || s === 'nan') val = '';
-          return val || '';
+          const sv = String(val ?? '').trim().toLowerCase();
+          if (sv === 'undefined' || sv === 'null' || sv === 'nan') val = '';
+          return String(val || '');
         });
       });
 
@@ -4344,6 +4455,203 @@ function styleSheetHeader_(ws, colCount) {
       fill: { fgColor: { rgb: '1A1916' } },
       alignment: { wrapText: true, vertical: 'center' }
     };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADMIN DOWNLOAD LAPORAN
+// ══════════════════════════════════════════════════════════════
+let adlState = { role: 'security', bulan: '', jenisKegiatan: [], pegawaiID: '' };
+
+function openAdminDownloadModal() {
+  if (currentUser?.role !== 'admin') return;
+  adlState = { role: 'security', bulan: '', jenisKegiatan: ['__SEMUA__'], pegawaiID: '' };
+
+  // Populate dropdown pegawai - semua role
+  const pegawaiSel = document.getElementById('adl-pegawai');
+  pegawaiSel.innerHTML = '<option value="">— Semua Pegawai —</option>';
+  (masterData.pegawai || []).forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.PegawaiID;
+    opt.textContent = p.Nama + ' (' + (p.Role || '') + ')';
+    pegawaiSel.appendChild(opt);
+  });
+  adlState.pegawaiID = '';
+
+  // Populate bulan
+  const now = new Date();
+  const bulanGroup = document.getElementById('adl-bulan-group');
+  bulanGroup.innerHTML = '';
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const v = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const lbl = BULAN_ID[d.getMonth()] + ' ' + d.getFullYear();
+    const chip = document.createElement('button');
+    chip.className = 'dl-chip' + (i === 0 ? ' active' : '');
+    chip.textContent = lbl;
+    chip.dataset.val = v;
+    chip.onclick = () => {
+      bulanGroup.querySelectorAll('.dl-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      adlState.bulan = v;
+    };
+    if (i === 0) adlState.bulan = v;
+    bulanGroup.appendChild(chip);
+  }
+
+  // Set default role + build jenis chips
+  adlBuildJenisChips('security');
+
+  document.getElementById('adl-modal-overlay').classList.remove('hidden');
+}
+
+function adlSetRole(role, btn) {
+  adlState.role = role;
+  document.getElementById('adl-role-group').querySelectorAll('.dl-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  adlBuildJenisChips(role);
+}
+
+function adlBuildJenisChips(role) {
+  const jenisMap = LAPORAN_CONFIG[role] || {};
+  const jenisGroup = document.getElementById('adl-jenis-group');
+  jenisGroup.innerHTML = '';
+  adlState.jenisKegiatan = ['__SEMUA__'];
+
+  const allChip = document.createElement('button');
+  allChip.className = 'dl-chip active';
+  allChip.textContent = 'Semua';
+  allChip.dataset.val = '__SEMUA__';
+  allChip.onclick = () => {
+    jenisGroup.querySelectorAll('.dl-chip').forEach(c => c.classList.remove('active'));
+    allChip.classList.add('active');
+    adlState.jenisKegiatan = ['__SEMUA__'];
+  };
+  jenisGroup.appendChild(allChip);
+
+  Object.keys(jenisMap).forEach(jk => {
+    const chip = document.createElement('button');
+    chip.className = 'dl-chip';
+    chip.textContent = jenisMap[jk].label;
+    chip.dataset.val = jk;
+    chip.onclick = () => {
+      allChip.classList.remove('active');
+      chip.classList.toggle('active');
+      const actives = [...jenisGroup.querySelectorAll('.dl-chip.active')].map(c => c.dataset.val);
+      adlState.jenisKegiatan = actives.length ? actives : ['__SEMUA__'];
+      if (!actives.length) allChip.classList.add('active');
+    };
+    jenisGroup.appendChild(chip);
+  });
+}
+
+function closeAdminDownloadModal() {
+  document.getElementById('adl-modal-overlay').classList.add('hidden');
+}
+
+async function processAdminDownload() {
+  const { role, bulan, jenisKegiatan, pegawaiID } = adlState;
+  const selPegawai = document.getElementById('adl-pegawai');
+  const pegawaiVal = selPegawai.value;
+  const pegawaiNama = pegawaiVal
+    ? (masterData.pegawai || []).find(p => p.PegawaiID === pegawaiVal)?.Nama || pegawaiVal
+    : 'Semua_Pegawai';
+
+  if (!bulan) { showToast('Pilih bulan dulu'); return; }
+
+  const btn = document.getElementById('adl-process-btn');
+  const btnLabel = document.getElementById('adl-btn-label');
+  btn.disabled = true;
+  btnLabel.textContent = 'Memuat data...';
+
+  try {
+    const result = await fetchJsonWithRetry(
+      APPS_SCRIPT_URL
+        + '?action=getData'
+        + '&role=' + encodeURIComponent(role)
+        + '&filter=semua'
+        + '&limit=500'
+        + '&offset=0'
+        + '&token=' + encodeURIComponent(currentUser?.token || '')
+        + '&t=' + Date.now(),
+      {},
+      { retries: 2, timeoutMs: 45000, retryDelayMs: 800 }
+    );
+
+    let allRows = result.rows || [];
+
+    // Filter by pegawai kalau dipilih
+    if (pegawaiVal) {
+      allRows = allRows.filter(r => {
+        const np = _s(r.NamaPegawai);
+        return np === pegawaiVal || np === pegawaiNama || np.toLowerCase() === pegawaiNama.toLowerCase();
+      });
+    }
+
+    // Filter by bulan
+    const [tahun, bln] = bulan.split('-').map(Number);
+    const rowsByBulan = allRows.filter(r => {
+      const d = new Date(r.Tanggal || r.Timestamp || '');
+      return d.getFullYear() === tahun && (d.getMonth() + 1) === bln;
+    });
+
+    if (!rowsByBulan.length) {
+      showToast('Tidak ada data untuk filter ini');
+      btn.disabled = false;
+      btnLabel.textContent = 'Proses & Download';
+      return;
+    }
+
+    const jenisMap = LAPORAN_CONFIG[role] || {};
+    const jenisKeys = jenisKegiatan.includes('__SEMUA__')
+      ? Object.keys(jenisMap)
+      : jenisKegiatan.filter(jk => jenisMap[jk]);
+
+    btnLabel.textContent = 'Membuat file Excel...';
+    const wb = XLSX.utils.book_new();
+
+    jenisKeys.forEach(jk => {
+      const cfg = jenisMap[jk];
+      if (!cfg) return;
+      const rowsJK = rowsByBulan.filter(r => cfg.matchFn ? cfg.matchFn(r) : false);
+      const header = cfg.cols.map(c => c.label);
+      const rows = rowsJK.map(r => cfg.cols.map(c => {
+        let val = c.fn ? c.fn(r) : '';
+        if (val == null) val = '';
+        if (c.label === 'Tanggal' && val) {
+          const d = new Date(val);
+          if (!isNaN(d)) val = d.toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
+        }
+        if (c.label.includes('(Rp)') && val && !isNaN(Number(val))) val = Number(val).toLocaleString('id-ID');
+        const sv = String(val ?? '').trim().toLowerCase();
+        if (sv === 'undefined' || sv === 'null' || sv === 'nan') val = '';
+        return String(val || '');
+      }));
+
+      const sheetData = rows.length ? [header, ...rows] : [header];
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
+      styleSheetHeader_(ws, header.length);
+      ws['!cols'] = header.map((h, i) => {
+        const maxLen = Math.max(h.length, ...rows.map(r => String(r[i] || '').length));
+        return { wch: Math.min(Math.max(maxLen + 2, 12), 60) };
+      });
+      XLSX.utils.book_append_sheet(wb, ws, cfg.label.substring(0, 31));
+    });
+
+    const bulanLabel = BULAN_ID[bln - 1] + '_' + tahun;
+    const jenisLabel = jenisKegiatan.includes('__SEMUA__')
+      ? 'Semua_Kegiatan'
+      : jenisKeys.map(jk => (jenisMap[jk]?.label || jk).replace(/\s+/g, '_').substring(0, 20)).join('+');
+    const fileName = `Laporan_SKP_${pegawaiNama.replace(/\s+/g,'_')}_${bulanLabel}_${jenisLabel}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
+    showToast('✅ File berhasil didownload!');
+    closeAdminDownloadModal();
+  } catch(e) {
+    showToast('Gagal: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btnLabel.textContent = 'Proses & Download';
   }
 }
 
