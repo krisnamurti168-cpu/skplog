@@ -4342,7 +4342,19 @@ async function processDownload() {
       { retries: 2, timeoutMs: 45000, retryDelayMs: 800 }
     );
 
-    const allRows = result.rows || [];
+    let allRows = result.rows || [];
+
+    // Opsi A: Filter by user login (support NamaPegawai berisi PegawaiID atau nama)
+    // lookupNama() resolve PG010 → "Wahyu Sigit Prabowo"
+    const myNama = _s(currentUser?.nama || '').toLowerCase();
+    const myID   = _s(currentUser?.pegawaiID || '').toLowerCase();
+    if (currentUser?.role !== 'admin') {
+      allRows = allRows.filter(r => {
+        const raw  = _s(r.NamaPegawai).toLowerCase();
+        const resolved = lookupNama(r.NamaPegawai).toLowerCase();
+        return raw === myID || raw === myNama || resolved === myNama;
+      });
+    }
 
     // Filter by bulan
     const [tahun, bln] = bulan.split('-').map(Number);
@@ -4385,9 +4397,11 @@ async function processDownload() {
       const rowsJK = rowsByBulan.filter(r => cfg.matchFn ? cfg.matchFn(r) : false);
 
       // Build array data pakai fn(r) — bukan r[key] lagi
-      const header = cfg.cols.map(c => c.label);
+      // Opsi B: Selalu sisipkan kolom Nama Pegawai di awal
+      const header = ['Nama Pegawai', ...cfg.cols.map(c => c.label)];
       const rows = rowsJK.map(r => {
-        return cfg.cols.map(c => {
+        const namaPegawai = lookupNama(r.NamaPegawai) || _s(r.NamaPegawai);
+        const dataCols = cfg.cols.map(c => {
           let val = c.fn ? c.fn(r) : '';
           if (val == null) val = '';
           // Format tanggal
@@ -4404,6 +4418,7 @@ async function processDownload() {
           if (sv === 'undefined' || sv === 'null' || sv === 'nan') val = '';
           return String(val || '');
         });
+        return [namaPegawai, ...dataCols];
       });
 
       if (!rows.length) {
@@ -4580,11 +4595,14 @@ async function processAdminDownload() {
 
     let allRows = result.rows || [];
 
-    // Filter by pegawai kalau dipilih
+    // Opsi A: Filter by pegawai (support NamaPegawai berisi PegawaiID atau nama)
     if (pegawaiVal) {
+      const targetNama = pegawaiNama.toLowerCase();
+      const targetID   = pegawaiVal.toLowerCase();
       allRows = allRows.filter(r => {
-        const np = _s(r.NamaPegawai);
-        return np === pegawaiVal || np === pegawaiNama || np.toLowerCase() === pegawaiNama.toLowerCase();
+        const raw      = _s(r.NamaPegawai).toLowerCase();
+        const resolved = lookupNama(r.NamaPegawai).toLowerCase();
+        return raw === targetID || raw === targetNama || resolved === targetNama;
       });
     }
 
@@ -4614,19 +4632,24 @@ async function processAdminDownload() {
       const cfg = jenisMap[jk];
       if (!cfg) return;
       const rowsJK = rowsByBulan.filter(r => cfg.matchFn ? cfg.matchFn(r) : false);
-      const header = cfg.cols.map(c => c.label);
-      const rows = rowsJK.map(r => cfg.cols.map(c => {
-        let val = c.fn ? c.fn(r) : '';
-        if (val == null) val = '';
-        if (c.label === 'Tanggal' && val) {
-          const d = new Date(val);
-          if (!isNaN(d)) val = d.toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
-        }
-        if (c.label.includes('(Rp)') && val && !isNaN(Number(val))) val = Number(val).toLocaleString('id-ID');
-        const sv = String(val ?? '').trim().toLowerCase();
-        if (sv === 'undefined' || sv === 'null' || sv === 'nan') val = '';
-        return String(val || '');
-      }));
+      // Opsi B: Selalu sisipkan kolom Nama Pegawai di awal
+      const header = ['Nama Pegawai', ...cfg.cols.map(c => c.label)];
+      const rows = rowsJK.map(r => {
+        const namaPegawai = lookupNama(r.NamaPegawai) || _s(r.NamaPegawai);
+        const dataCols = cfg.cols.map(c => {
+          let val = c.fn ? c.fn(r) : '';
+          if (val == null) val = '';
+          if (c.label === 'Tanggal' && val) {
+            const d = new Date(val);
+            if (!isNaN(d)) val = d.toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
+          }
+          if (c.label.includes('(Rp)') && val && !isNaN(Number(val))) val = Number(val).toLocaleString('id-ID');
+          const sv = String(val ?? '').trim().toLowerCase();
+          if (sv === 'undefined' || sv === 'null' || sv === 'nan') val = '';
+          return String(val || '');
+        });
+        return [namaPegawai, ...dataCols];
+      });
 
       const sheetData = rows.length ? [header, ...rows] : [header];
       const ws = XLSX.utils.aoa_to_sheet(sheetData);
