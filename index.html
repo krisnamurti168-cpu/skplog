@@ -4327,8 +4327,19 @@ async function processDownload() {
   btnLabel.textContent = 'Memuat data...';
 
   try {
-    // Fetch semua data role ini untuk bulan yang dipilih
-    // Kita fetch fresh dari backend dengan limit besar agar dapat data lengkap bulan itu
+    // Pastikan masterData sudah ter-load sebelum matchFn dipakai
+    if (!masterDataReady) {
+      btnLabel.textContent = 'Memuat master data...';
+      await loadMasterData({ silent: true });
+      if (!masterDataReady) {
+        showToast('Master data belum siap, coba lagi');
+        btn.disabled = false;
+        btnLabel.textContent = 'Proses & Download';
+        return;
+      }
+    }
+
+    // Fetch semua data role ini
     const result = await fetchJsonWithRetry(
       APPS_SCRIPT_URL
         + '?action=getData'
@@ -4580,6 +4591,18 @@ async function processAdminDownload() {
   btnLabel.textContent = 'Memuat data...';
 
   try {
+    // Pastikan masterData ter-load sebelum matchFn dipakai
+    if (!masterDataReady) {
+      btnLabel.textContent = 'Memuat master data...';
+      await loadMasterData({ silent: true });
+      if (!masterDataReady) {
+        showToast('Master data belum siap, coba lagi');
+        btn.disabled = false;
+        btnLabel.textContent = 'Proses & Download';
+        return;
+      }
+    }
+
     const result = await fetchJsonWithRetry(
       APPS_SCRIPT_URL
         + '?action=getData'
