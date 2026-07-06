@@ -540,6 +540,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 /* Close FU button */
 .close-fu-btn { margin-top: 8px; width: 100%; padding: 9px; background: #16a34a; color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font); font-weight: 600; cursor: pointer; transition: opacity .15s; }
 .close-fu-btn:active { opacity: .8; }
+.share-wa-btn { display: block; margin-top: 6px; width: 100%; padding: 9px; background: #25D366; color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font); font-weight: 600; cursor: pointer; transition: opacity .15s; text-align: center; text-decoration: none; box-sizing: border-box; }
+.share-wa-btn:active { opacity: .8; }
 /* Closed badge */
 .badge-closed-status { background: #E6F4EA; color: #166534; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
 .list-item.closed-item { opacity: 0.65; }
@@ -3890,6 +3892,10 @@ function renderDash() {
         ✓ Tandai Sudah Ditangani
       </button>` : '';
 
+    const _fotoWA = _s(d._fotoOpen || d.FotoFollowUp || d.Foto || '');
+    const _sd = {nama,role:d._role||role,ts,kantor:_s(d.Kantor),jk,prioritas:_s(d.Prioritas)||'Biasa',detail,foto:_fotoWA};
+    const shareBtn = isAdmin ? `<button class="share-wa-btn" onclick='shareFollowUpWA(${JSON.stringify(JSON.stringify(_sd))})'>📤 Bagikan via WhatsApp</button>` : '';
+
     return `
     <div class="list-item ${role}${isClosed?' closed-item':''}">
       <div class="li-row">
@@ -3906,10 +3912,41 @@ function renderDash() {
         ${foto}
       </div>
       ${closeBtn}
+      ${shareBtn}
     </div>`;
   }).join('');
 }
 
+
+// ── Share Follow Up via WhatsApp ─────────────────────────────
+function shareFollowUpWA(sdJson) {
+  try {
+    const d = typeof sdJson === 'string' ? JSON.parse(sdJson) : sdJson;
+    const foto = d.foto ? '\n📷 Dokumentasi: ' + d.foto : '';
+    const msg = [
+      '⚠️ *Laporan Tindak Lanjut*',
+      '*Balmon SFR Kelas I Yogyakarta*',
+      '',
+      'Tanggal: ' + (d.ts || '-'),
+      'Dilaporkan oleh: ' + (d.nama || '-') + ' (' + (d.role || '-') + ')',
+      'Lokasi: ' + (d.kantor || '-'),
+      '',
+      '*Temuan:*',
+      (d.detail || '-'),
+      '',
+      '*Prioritas:* ' + (d.prioritas || 'Biasa'),
+      foto,
+      '',
+      'Mohon koordinasi untuk penanganan lebih lanjut.',
+      '_Dikirim melalui SOIMAH_'
+    ].filter(x => x !== undefined).join('\n');
+
+    const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+    window.open(url, '_blank');
+  } catch(e) {
+    showToast('Gagal membuat pesan WA');
+  }
+}
 // ── Tandai Selesai Follow Up (admin only) ─────────────────────
 async function promptCloseFollowUp(rowID, role, nama) {
   if (!rowID || !role) {
@@ -4328,9 +4365,15 @@ async function processDownload() {
 
   try {
     // Pastikan masterData sudah ter-load sebelum matchFn dipakai
-    if (!masterDataReady) {
+    const mdReady = masterDataReady && (masterData.jenisKegiatanCS||[]).length > 0;
+    if (!mdReady) {
       btnLabel.textContent = 'Memuat master data...';
       await loadMasterData({ silent: true });
+      let waited = 0;
+      while (!masterDataReady && waited < 5000) {
+        await new Promise(r => setTimeout(r, 300));
+        waited += 300;
+      }
       if (!masterDataReady) {
         showToast('Master data belum siap, coba lagi');
         btn.disabled = false;
@@ -4592,9 +4635,15 @@ async function processAdminDownload() {
 
   try {
     // Pastikan masterData ter-load sebelum matchFn dipakai
-    if (!masterDataReady) {
+    const mdReady2 = masterDataReady && (masterData.jenisKegiatanCS||[]).length > 0;
+    if (!mdReady2) {
       btnLabel.textContent = 'Memuat master data...';
       await loadMasterData({ silent: true });
+      let waited2 = 0;
+      while (!masterDataReady && waited2 < 5000) {
+        await new Promise(r => setTimeout(r, 300));
+        waited2 += 300;
+      }
       if (!masterDataReady) {
         showToast('Master data belum siap, coba lagi');
         btn.disabled = false;
