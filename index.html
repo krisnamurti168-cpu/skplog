@@ -614,6 +614,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <option value="driver">Driver</option>
           <option value="cs">CS</option>
           <option value="admin">Admin</option>
+          <option value="vendor">Vendor</option>
         </select>
       </div>
 
@@ -1683,7 +1684,7 @@ const screenRoleMap = {
   'screen-security': 'security',
   'screen-security-list': 'security'
 };
-const ROLE_LABEL = { security: 'Security', driver: 'Driver', cs: 'CS', admin: 'Admin' };
+const ROLE_LABEL = { security: 'Security', driver: 'Driver', cs: 'CS', admin: 'Admin', vendor: 'Vendor' };
 
 // Track origin screen untuk back button context-aware
 let formOrigin = { cs: 'screen-home', driver: 'screen-home', security: 'screen-home' };
@@ -2094,9 +2095,16 @@ function updateAuthUI() {
 
   // Admin bisa akses semua role, jadi tidak ada yang dikunci
   const isAdmin = currentUser && currentUser.role === 'admin';
-  document.querySelectorAll('.role-card.security').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'security'));
-  document.querySelectorAll('.role-card.driver').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'driver'));
-  document.querySelectorAll('.role-card.cs').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'cs'));
+  const isVendorUser = currentUser && currentUser.role === 'vendor';
+  // Vendor: sembunyikan semua role cards, hanya tampilkan dashboard card
+  document.querySelectorAll('.role-card').forEach(el => {
+    el.style.display = isVendorUser ? 'none' : '';
+  });
+  if (!isVendorUser) {
+    document.querySelectorAll('.role-card.security').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'security'));
+    document.querySelectorAll('.role-card.driver').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'driver'));
+    document.querySelectorAll('.role-card.cs').forEach(el => el.classList.toggle('locked', !!currentUser && !isAdmin && currentUser.role !== 'cs'));
+  }
   // Admin-only: tampilkan card download
   const adminDlCard = document.getElementById('admin-download-card');
   if (adminDlCard) adminDlCard.style.display = isAdmin ? '' : 'none';
@@ -2415,8 +2423,13 @@ function go(screenId) {
   }
 
   const requiredRole = screenRoleMap[screenId];
+  const isVendor = currentUser && currentUser.role === 'vendor';
+  // Vendor hanya boleh akses home dan dashboard
+  if (isVendor && screenId !== 'screen-home' && screenId !== 'screen-dashboard') {
+    screenId = 'screen-home';
+  }
   // Admin punya akses ke semua role, jadi bypass guard
-  if (requiredRole && currentUser && currentUser.role !== 'admin' && currentUser.role !== requiredRole) {
+  if (!isVendor && requiredRole && currentUser && currentUser.role !== 'admin' && currentUser.role !== requiredRole) {
     showToast(`Akun ini hanya untuk role ${ROLE_LABEL[currentUser.role] || currentUser.role}`);
     screenId = 'screen-home';
   }
@@ -3894,7 +3907,7 @@ function renderDash() {
 
     const _fotoWA = _s(d._fotoOpen || d.FotoFollowUp || d.Foto || '');
     const _sd = {nama,role:d._role||role,ts,kantor:_s(d.Kantor),jk,prioritas:_s(d.Prioritas)||'Biasa',detail,foto:_fotoWA};
-    const shareBtn = isAdmin ? `<button class="share-wa-btn" onclick='shareFollowUpWA(${JSON.stringify(JSON.stringify(_sd))})'>📤 Bagikan via WhatsApp</button>` : '';
+    const shareBtn = (isAdmin || currentUser?.role === 'vendor') ? `<button class="share-wa-btn" onclick='shareFollowUpWA(${JSON.stringify(JSON.stringify(_sd))})'>📤 Bagikan via WhatsApp</button>` : '';
 
     return `
     <div class="list-item ${role}${isClosed?' closed-item':''}">
