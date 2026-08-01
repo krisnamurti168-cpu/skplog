@@ -2388,7 +2388,7 @@ function populateDropdowns() {
     drvKegRekapEl.appendChild(opt);
   }
   // Keperluan Security — selalu append opsi "Lainnya" di akhir
-  fillSelect('sec-keperluan', masterData.keperluanDriver, 'KepID', 'NamaKeperluan');
+  fillSelect('sec-keperluan', masterData.keperluanDriver, p => p.NamaKeperluan || p.KepID || p.KeperluanDriverID || p.KeperluanID || p.ID || '', 'NamaKeperluan');
   const kepEl = document.getElementById('sec-keperluan');
   if (kepEl && ![...kepEl.options].some(o => o.text.toLowerCase().includes('lainnya'))) {
     const opt = document.createElement('option');
@@ -3154,14 +3154,27 @@ async function submitSecurity() {
   }).filter(Boolean);
   const kegiatanPiketChecked = piketNames.join(', ');
 
-  // Keperluan: gabungkan jika user pilih "Lainnya"
-  const keperluanRaw = val('sec-keperluan');
+  // Keperluan: bersihkan "undefined"/"null", gabungkan jika user pilih "Lainnya"
+  const sanitizeKep = s => {
+    const t = String(s == null ? '' : s).trim();
+    const l = t.toLowerCase();
+    return (l === 'undefined' || l === 'null' || l === 'nan') ? '' : t;
+  };
+  const keperluanRaw = sanitizeKep(val('sec-keperluan'));
   let keperluanFinal = keperluanRaw;
-  const kepLain = (val('sec-keperluan-lainnya') || '').trim();
+  const kepLain = sanitizeKep(val('sec-keperluan-lainnya'));
   if (kepLain && keperluanRaw) {
     const opt = document.getElementById('sec-keperluan').options[document.getElementById('sec-keperluan').selectedIndex];
     const optText = (opt?.text || '').toLowerCase();
     if (optText.includes('lainnya')) keperluanFinal = 'Lainnya: ' + kepLain;
+  }
+  // Kunci: kendaraan KELUAR wajib ada keperluan — cegah tersimpan kosong
+  if (secState.statusKend === 'Keluar') {
+    if (!keperluanFinal) { showToast('Pilih keperluan kendaraan keluar dulu'); return; }
+    const optSel = document.getElementById('sec-keperluan').options[document.getElementById('sec-keperluan').selectedIndex];
+    if ((optSel?.text || '').toLowerCase().includes('lainnya') && !kepLain) {
+      showToast('Isi keterangan keperluan lainnya dulu'); return;
+    }
   }
 
   const data = {
