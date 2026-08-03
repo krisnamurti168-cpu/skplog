@@ -4164,6 +4164,7 @@ const LAPORAN_CONFIG = {
         { label: 'Kendaraan Dinas',            fn: r => lookupKendaraan(_s(r.KendaraanDinas)) },
         { label: 'Jenis Kendaraan (Non-Dinas)',fn: r => r.JenisKendaraanManual },
         { label: 'Plat Nomor',                 fn: r => r.PlatNomor },
+        { label: 'Nama Driver',                fn: r => _s(r.NamaDriver) ? lookupNama(r.NamaDriver) : (_s(r.NamaSopirManual) || '-') },
         { label: 'Jam Masuk',                  fn: r => fmtJam(r.JamMasuk) },
         { label: 'Jam Keluar',                 fn: r => fmtJam(r.JamKeluar) },
         { label: 'Keperluan (Keluar)',          fn: r => lookupKeperluan(_s(r.Keperluan)) },
