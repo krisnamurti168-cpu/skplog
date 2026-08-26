@@ -942,6 +942,28 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <option>Setelah bertugas</option>
         </select>
       </div>
+      <div class="form-group hidden" id="drv-lokasi-tujuan-wrap">
+        <label>Lokasi Tujuan</label>
+        <select id="drv-lokasi-tujuan" onchange="drvOnLokasiTujuan()">
+          <option value="">— Pilih lokasi tujuan —</option>
+          <option>Wilayah D.I. Yogyakarta</option>
+          <option>Sleman</option>
+          <option>Bantul</option>
+          <option>Gunungkidul</option>
+          <option>Kulon Progo</option>
+          <option>Surakarta</option>
+          <option>Klaten</option>
+          <option>Wonogiri</option>
+          <option>Purworejo</option>
+          <option>Kebumen</option>
+          <option>Sukoharjo</option>
+          <option>Lainnya</option>
+        </select>
+      </div>
+      <div class="form-group hidden" id="drv-lokasi-tujuan-lainnya-wrap">
+        <label>Lokasi Tujuan Lainnya</label>
+        <input type="text" id="drv-lokasi-tujuan-lainnya" placeholder="Tulis lokasi tujuan...">
+      </div>
       <div class="form-group hidden" id="drv-uraian-wrap">
         <label>Uraian Kegiatan <span class="req">*</span></label>
         <div class="checkbox-group" id="drv-uraian-list"></div>
@@ -2831,12 +2853,21 @@ document.addEventListener('change', e => {
   }
 });
 
+function drvOnLokasiTujuan() {
+  const v = val('drv-lokasi-tujuan');
+  if (v === 'Lainnya') { show('drv-lokasi-tujuan-lainnya-wrap'); }
+  else { hide('drv-lokasi-tujuan-lainnya-wrap'); document.getElementById('drv-lokasi-tujuan-lainnya').value = ''; }
+}
+
 function drvOnTahap() {
   const v = val('drv-tahap');
   hide('drv-uraian-wrap'); hide('drv-odometer-awal-wrap'); hide('drv-odometer-akhir-wrap');
+  hide('drv-lokasi-tujuan-wrap'); hide('drv-lokasi-tujuan-lainnya-wrap');
+  document.getElementById('drv-lokasi-tujuan').value = '';
+  document.getElementById('drv-lokasi-tujuan-lainnya').value = '';
   if (!v) return;
   show('drv-uraian-wrap');
-  if (v === 'Persiapan Kendaraan') show('drv-odometer-awal-wrap');
+  if (v === 'Persiapan Kendaraan') { show('drv-odometer-awal-wrap'); show('drv-lokasi-tujuan-wrap'); }
   if (v === 'Setelah bertugas') show('drv-odometer-akhir-wrap');
 
   // Render uraian filtered — robust matching (case-insensitive, trim, fallback field)
@@ -2943,6 +2974,7 @@ async function submitDriver() {
     kegiatanRekapitulasi: val('drv-kegiatan-rekap'),
     kegiatanRekapitulasiLainnya: val('drv-rekap-lainnya'),
     tahapKegiatan: val('drv-tahap'),
+    lokasiTujuan: val('drv-lokasi-tujuan') === 'Lainnya' ? val('drv-lokasi-tujuan-lainnya') : val('drv-lokasi-tujuan'),
     uraianKegiatan: uraianChecked,
     odometerAwal: val('drv-odometer-awal'),
     odometerAkhir: val('drv-odometer-akhir'),
