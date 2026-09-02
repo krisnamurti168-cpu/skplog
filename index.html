@@ -685,6 +685,14 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     </div>
     <span class="arrow">›</span>
   </div>
+  <div class="dashboard-card" onclick="forceRefreshCache()" style="opacity:0.7">
+    <span class="icon">🔄</span>
+    <div class="info">
+      <b>Refresh Data</b>
+      <span>Perbarui dropdown & data cache</span>
+    </div>
+    <span class="arrow">›</span>
+  </div>
   <div class="dashboard-card" id="admin-download-card" style="display:none" onclick="openAdminDownloadModal()">
     <span class="icon">📥</span>
     <div class="info">
@@ -1019,7 +1027,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <hr class="divider">
         <span class="divider-label">Pemeriksaan Harian</span>
         <div class="form-group">
-          <label>Kebersihan Dalam Mobil <span class="req">*</span></label>
+          <label>Kondisi Sebelum <span class="req">*</span></label>
           <div class="photo-picker">
             <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-dalam')"><span class="icon">📷</span> Kamera</button>
             <button type="button" class="photo-pick-btn" onclick="document.getElementById('drv-foto-dalam-file').click()"><span class="icon">🖼️</span> Galeri</button>
@@ -1035,7 +1043,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <input type="hidden" id="drv-foto-dalam">
         </div>
         <div class="form-group">
-          <label>Kebersihan Luar Mobil <span class="req">*</span></label>
+          <label>Kondisi Sesudah <span class="req">*</span></label>
           <div class="photo-picker">
             <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-luar')"><span class="icon">📷</span> Kamera</button>
             <button type="button" class="photo-pick-btn" onclick="document.getElementById('drv-foto-luar-file').click()"><span class="icon">🖼️</span> Galeri</button>
@@ -2022,6 +2030,7 @@ function logoutLocal() {
   currentUser = null;
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  localStorage.removeItem(MASTER_CACHE_KEY);
   masterData = {};
   masterDataReady = false;
   masterDataPromise = null;
@@ -2167,11 +2176,45 @@ function applyLoggedInUserToForms() {
 }
 
 // ── Load Master Data ─────────────────────────────────────────
+const MASTER_CACHE_KEY = 'SOIMAH_MASTER_CACHE';
+const MASTER_CACHE_MAX_AGE = 10 * 60 * 1000; // 10 menit
+
+function getLocalMasterCache_() {
+  try {
+    const raw = localStorage.getItem(MASTER_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (Date.now() - cached._ts > MASTER_CACHE_MAX_AGE) {
+      localStorage.removeItem(MASTER_CACHE_KEY);
+      return null;
+    }
+    return cached.data;
+  } catch(e) { return null; }
+}
+function setLocalMasterCache_(data) {
+  try {
+    localStorage.setItem(MASTER_CACHE_KEY, JSON.stringify({ data: data, _ts: Date.now() }));
+  } catch(e) { /* quota exceeded, ignore */ }
+}
+
 async function loadMasterData(options = {}) {
   const silent = !!options.silent;
+  const forceRefresh = !!options.forceRefresh;
   if (!currentUser || !currentUser.token) {
     if (!silent) go('screen-login');
     return null;
+  }
+
+  // Pakai localStorage cache jika tersedia dan tidak force refresh
+  if (!forceRefresh) {
+    const localCached = getLocalMasterCache_();
+    if (localCached) {
+      masterData = localCached;
+      masterDataReady = true;
+      populateDropdowns();
+      applyLoggedInUserToForms();
+      return masterData;
+    }
   }
 
   // Kalau masih ada request berjalan, gunakan request yang sama agar tidak dobel.
@@ -2189,6 +2232,7 @@ async function loadMasterData(options = {}) {
 
       masterData = result.masterData || result;
       masterDataReady = true;
+      setLocalMasterCache_(masterData);
       populateDropdowns();
       applyLoggedInUserToForms();
       return masterData;
@@ -2214,6 +2258,18 @@ async function loadMasterData(options = {}) {
   })();
 
   return masterDataPromise;
+}
+
+async function forceRefreshCache() {
+  showToast('Membersihkan cache...');
+  try {
+    localStorage.removeItem(MASTER_CACHE_KEY);
+    await fetch(APPS_SCRIPT_URL + '?action=invalidateCache&token=' + encodeURIComponent(currentUser?.token || '') + '&t=' + Date.now(), { cache: 'no-store' });
+    await loadMasterData({ silent: false, forceRefresh: true });
+    showToast('Cache berhasil diperbarui!');
+  } catch(e) {
+    showToast('Gagal refresh cache');
+  }
 }
 
 function loadDemoData() {
@@ -2955,8 +3011,8 @@ async function submitDriver() {
 
   // Foto untuk Kondisi Kendaraan: kalau Harian, kirim foto dalam + foto luar; kalau Bulanan, foto kondisi
   const fotoKondisiKendaraan = val('drv-foto-kondisi');
-  const fotoKebersihanDalam = val('drv-foto-dalam');
-  const fotoKebersihanLuar = val('drv-foto-luar');
+  const fotoKondisiSebelum = val('drv-foto-dalam');
+  const fotoKondisiSesudah = val('drv-foto-luar');
 
   const data = {
     tanggal: val('drv-tanggal'),
@@ -2995,8 +3051,8 @@ async function submitDriver() {
     fotoBBM: val('drv-foto-bbm'),
     fotoTambahan: val('drv-foto-rekap'),
     fotoKondisiKendaraan: tipeLaporan === 'Bulanan' ? fotoKondisiKendaraan : '',
-    fotoKebersihanDalam: tipeLaporan === 'Harian' ? fotoKebersihanDalam : '',
-    fotoKebersihanLuar: tipeLaporan === 'Harian' ? fotoKebersihanLuar : '',
+    fotoKondisiSebelum: tipeLaporan === 'Harian' ? fotoKondisiSebelum : '',
+    fotoKondisiSesudah: tipeLaporan === 'Harian' ? fotoKondisiSesudah : '',
     fotoFollowUp: val('drv-foto-fu'),
   };
 
@@ -3548,7 +3604,7 @@ function toDriveThumbUrl(url, size = 180) {
 function getPrimaryPhotoUrlFromRow(r) {
   const candidates = [
     r._fotoThumb, r._foto, r.Foto,
-    r.FotoBBM, r.FotoKebersihanDalam, r.FotoKebersihanLuar,
+    r.FotoBBM, r.FotoKondisiSebelum, r.FotoKondisiSesudah,
     r.FotoTambahan, r.FotoKondisiKendaraan, r.FotoFollowUp,
     r.FotoPiket, r.FotoSurat, r.FotoGenset
   ];
@@ -3558,7 +3614,7 @@ function getPrimaryPhotoUrlFromRow(r) {
 function getOpenPhotoUrlFromRow(r) {
   const candidates = [
     r._fotoOpen, r._foto, r.Foto,
-    r.FotoBBM, r.FotoKebersihanDalam, r.FotoKebersihanLuar,
+    r.FotoBBM, r.FotoKondisiSebelum, r.FotoKondisiSesudah,
     r.FotoTambahan, r.FotoKondisiKendaraan, r.FotoFollowUp,
     r.FotoPiket, r.FotoSurat, r.FotoGenset
   ];
@@ -4269,8 +4325,8 @@ const LAPORAN_CONFIG = {
         { label: 'Tanggal',                        fn: r => r.Tanggal },
         { label: 'Kendaraan Dinas',                fn: r => lookupKendaraan(_s(r.KendaraanDinas)) },
         { label: 'Tipe Laporan (Harian/Bulanan)',  fn: r => r.TipeLaporanKondisi },
-        { label: 'Link Foto Kebersihan Dalam',     fn: r => r.FotoKebersihanDalam },
-        { label: 'Link Foto Kebersihan Luar',      fn: r => r.FotoKebersihanLuar },
+        { label: 'Link Foto Kondisi Sebelum',      fn: r => r.FotoKondisiSebelum },
+        { label: 'Link Foto Kondisi Sesudah',       fn: r => r.FotoKondisiSesudah },
         { label: 'Item Kebersihan ✓ (Bulanan)',    fn: r => r.ItemKebersihan },
         { label: 'Fungsi Keselamatan ✓ (Bulanan)',fn: r => r.ItemFungsiKeselamatan },
         { label: 'Kelengkapan Kendaraan ✓',       fn: r => r.ItemKelengkapanKendaraan },
