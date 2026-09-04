@@ -3941,15 +3941,21 @@ function dashStatFilter(type) {
 
 function renderDashStats() {
   const today = new Date().toISOString().slice(0, 10);
-  const open = dashData.length;
-  const urgent = dashData.filter(d => String(d.Prioritas || '').toLowerCase().includes('sangat segera')).length;
+  const closed = dashData.filter(d => String(d.StatusFollowUp || '').trim().toUpperCase() === 'CLOSED').length;
+  const open = dashData.length - closed;
+  const urgent = dashData.filter(d => {
+    const status = String(d.StatusFollowUp || '').trim().toUpperCase();
+    return status !== 'CLOSED' && String(d.Prioritas || '').toLowerCase().includes('sangat segera');
+  }).length;
   const todayCount = dashData.filter(d => {
+    const status = String(d.StatusFollowUp || '').trim().toUpperCase();
     const ts = d.Timestamp ? new Date(d.Timestamp).toISOString().slice(0, 10) : '';
-    return ts === today;
+    return status !== 'CLOSED' && ts === today;
   }).length;
   document.getElementById('dash-fu-open').textContent = open;
   document.getElementById('dash-fu-urgent').textContent = urgent;
   document.getElementById('dash-fu-today').textContent = todayCount;
+  document.getElementById('dash-fu-closed').textContent = closed;
 }
 
 function renderDash() {
