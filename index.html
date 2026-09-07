@@ -1637,6 +1637,12 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button class="filter-tab" onclick="csStatusFilter('Revisi',this)" style="--ftab-active-bg:#FCEBEB;--ftab-active-color:#991B1B">Revisi</button>
       <button class="filter-tab" onclick="csStatusFilter('Verified',this)" style="--ftab-active-bg:#E6F4EA;--ftab-active-color:#166534">Verified</button>
     </div>
+    <div class="filter-tabs" id="cs-kantor-filters" style="margin-top:6px;display:none">
+      <button class="filter-tab active" onclick="csKantorFilter('semua',this)">Semua Kantor</button>
+      <button class="filter-tab" onclick="csKantorFilter('Kalasan',this)">Kalasan</button>
+      <button class="filter-tab" onclick="csKantorFilter('Veteran',this)">Veteran</button>
+    </div>
+    <div class="filter-tabs" id="cs-lokasi-filters" style="margin-top:6px;display:none"></div>
   </div>
   <div class="list-search">
     <input type="text" id="cs-search" placeholder="Cari nama pegawai atau detail..." oninput="onSearchInput('cs', this.value)">
@@ -2573,6 +2579,7 @@ function go(screenId) {
   document.getElementById(screenId).classList.add('active');
   window.scrollTo(0, 0);
   if (screenId === 'screen-dashboard') loadDashboard();
+  if (screenId === 'screen-cs-list') showAdminCSFilters();
 }
 
 // ── Utility ───────────────────────────────────────────────────
@@ -3693,6 +3700,8 @@ let listData = { security: [], driver: [], cs: [] };
 let listFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
 let listSearch_query = { security: '', driver: '', cs: '' };
 let csStatusFilter_active = 'semua';
+let csKantorFilter_active = 'semua';
+let csLokasiFilter_active = 'semua';
 let listOffset = { security: 0, driver: 0, cs: 0 };
 let listTotal = { security: 0, driver: 0, cs: 0 };
 let listHasMore = { security: false, driver: false, cs: false };
@@ -3815,7 +3824,7 @@ function updateListMeta(role) {
   const searchQuery = listSearch_query[role];
 
   let txt = '';
-  if (searchQuery || (role === 'cs' && csStatusFilter_active !== 'semua')) {
+  if (searchQuery || (role === 'cs' && (csStatusFilter_active !== 'semua' || csKantorFilter_active !== 'semua' || csLokasiFilter_active !== 'semua'))) {
     const matches = filterBySearchQuery(role).length;
     txt = matches + ' cocok dari ' + shown + ' dimuat';
   } else {
@@ -3874,6 +3883,21 @@ function filterBySearchQuery(role) {
     });
   }
 
+  // Apply CS kantor filter (client-side)
+  if (role === 'cs' && csKantorFilter_active !== 'semua') {
+    const kf = csKantorFilter_active.toLowerCase();
+    rows = rows.filter(r => String(r.Kantor || '').trim().toLowerCase() === kf);
+  }
+
+  // Apply CS lokasi filter (client-side)
+  if (role === 'cs' && csLokasiFilter_active !== 'semua') {
+    const lf = csLokasiFilter_active;
+    rows = rows.filter(r => {
+      const lokasiRaw = String(r.Lokasi || '').trim();
+      return lokasiRaw === lf || lookupLokasi(lokasiRaw).toLowerCase() === lookupLokasi(lf).toLowerCase();
+    });
+  }
+
   if (!q) return rows;
   return rows.filter(r => {
     const nama = lookupNama(r.NamaPegawai);
@@ -3897,6 +3921,65 @@ function csStatusFilter(status, btn) {
   btn.classList.add('active');
   renderList('cs', listFilter_active.cs);
   updateListMeta('cs');
+}
+
+function csKantorFilter(kantor, btn) {
+  csKantorFilter_active = kantor;
+  csLokasiFilter_active = 'semua'; // reset lokasi saat ganti kantor
+  const parent = btn.closest('.filter-tabs');
+  parent.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  buildLokasiFilterTabs(kantor);
+  renderList('cs', listFilter_active.cs);
+  updateListMeta('cs');
+}
+
+function csLokasiFilter(lokasiID, btn) {
+  csLokasiFilter_active = lokasiID;
+  const parent = btn.closest('.filter-tabs');
+  parent.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderList('cs', listFilter_active.cs);
+  updateListMeta('cs');
+}
+
+function buildLokasiFilterTabs(kantor) {
+  const container = document.getElementById('cs-lokasi-filters');
+  if (!container) return;
+  if (kantor === 'semua') {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  const lokasiList = (masterData.lokasi || []).filter(l =>
+    String(l.Kantor || '').trim().toLowerCase() === kantor.toLowerCase()
+  );
+  if (!lokasiList.length) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  let html = '<button class="filter-tab active" onclick="csLokasiFilter(\'semua\',this)">Semua Lokasi</button>';
+  lokasiList.forEach(l => {
+    const id = _s(l.LokasiID);
+    const nama = _s(l.NamaLokasi);
+    const short = nama.length > 18 ? nama.substring(0,18) + '…' : nama;
+    html += `<button class="filter-tab" onclick="csLokasiFilter('${id}',this)">${_se(short)}</button>`;
+  });
+  container.innerHTML = html;
+  container.style.display = 'flex';
+}
+
+function showAdminCSFilters() {
+  const isAdmin = currentUser && normalizeRoleFE(currentUser.role) === 'admin';
+  const kantorEl = document.getElementById('cs-kantor-filters');
+  if (kantorEl) kantorEl.style.display = isAdmin ? 'flex' : 'none';
+  if (!isAdmin) {
+    const lokasiEl = document.getElementById('cs-lokasi-filters');
+    if (lokasiEl) { lokasiEl.style.display = 'none'; lokasiEl.innerHTML = ''; }
+    csKantorFilter_active = 'semua';
+    csLokasiFilter_active = 'semua';
+  }
 }
 
 function renderList(role, filter) {
@@ -4200,11 +4283,24 @@ function openCSDetail(idx) {
 
   const isAdmin = currentUser && normalizeRoleFE(currentUser.role) === 'admin';
   const isCS = currentUser && normalizeRoleFE(currentUser.role) === 'cs';
+  const canReview = isAdmin;
+  const canResubmit = (isCS || isAdmin) && st === 'Revisi';
 
   // Action buttons
   let actionsHtml = '';
-  if (isAdmin && (st === 'Submitted' || st === 'Revisi' || !st)) {
-    actionsHtml = `
+
+  // Catatan koordinator banner (shown for Revisi status to anyone)
+  if (st === 'Revisi') {
+    actionsHtml += `
+      <div style="background:#FEF2F2;border-radius:var(--radius-sm);padding:12px;margin-top:10px">
+        <div style="font-size:12px;font-weight:600;color:#991B1B;margin-bottom:4px">⚠ Terdapat catatan dari koordinator</div>
+        <div style="font-size:12px;color:var(--text2)">${_se(r.LastReviewBy || '-')} • ${_se(r.LastReviewAt || '-')}</div>
+      </div>`;
+  }
+
+  // Review buttons (admin only, for Submitted or Revisi)
+  if (canReview && (st === 'Submitted' || st === 'Revisi' || !st)) {
+    actionsHtml += `
       <div class="cd-actions">
         <button class="cd-btn-approve" onclick="reviewCSAction('${logID}','Verified')">✓ Laporan Sesuai</button>
         <button class="cd-btn-revisi" onclick="showRevisiForm()">✎ Beri Catatan</button>
@@ -4221,13 +4317,9 @@ function openCSDetail(idx) {
       </div>`;
   }
 
-  // CS resubmit button if status Revisi
-  if (isCS && st === 'Revisi') {
-    actionsHtml = `
-      <div style="background:#FEF2F2;border-radius:var(--radius-sm);padding:12px;margin-top:10px">
-        <div style="font-size:12px;font-weight:600;color:#991B1B;margin-bottom:4px">⚠ Terdapat catatan dari koordinator</div>
-        <div style="font-size:12px;color:var(--text2)">${_se(r.LastReviewBy || '-')} • ${_se(r.LastReviewAt || '-')}</div>
-      </div>
+  // Resubmit button (CS or admin, only for Revisi status)
+  if (canResubmit) {
+    actionsHtml += `
       <div class="cd-actions" style="margin-top:10px">
         <button class="cd-btn-resubmit" onclick="showResubmitForm()">📷 Upload Foto Baru & Submit Ulang</button>
       </div>
