@@ -1641,6 +1641,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button class="filter-tab active" onclick="csKantorFilter('semua',this)">Semua Kantor</button>
       <button class="filter-tab" onclick="csKantorFilter('Kalasan',this)">Kalasan</button>
       <button class="filter-tab" onclick="csKantorFilter('Veteran',this)">Veteran</button>
+      <button class="filter-tab" onclick="csKantorFilter('Girijati',this)">Girijati</button>
+      <button class="filter-tab" onclick="csKantorFilter('Girimulyo',this)">Girimulyo</button>
     </div>
     <div class="filter-tabs" id="cs-lokasi-filters" style="margin-top:6px;display:none"></div>
   </div>
@@ -3748,7 +3750,7 @@ async function loadListData(role, filterOverride, options) {
         + '?action=getData'
         + '&role=' + encodeURIComponent(role)
         + '&filter=' + encodeURIComponent(filter)
-        + '&limit=' + LIST_PAGE_SIZE
+        + '&limit=' + (options.limit || LIST_PAGE_SIZE)
         + '&offset=' + listOffset[role]
         + '&token=' + encodeURIComponent(currentUser?.token || '')
         + '&t=' + Date.now(),
@@ -3783,7 +3785,9 @@ async function loadListData(role, filterOverride, options) {
 
 function loadMoreList(role) {
   if (!listHasMore[role]) return;
-  loadListData(role, listFilter_active[role], { append: true });
+  const opts = { append: true };
+  if (role === 'cs' && csKantorFilter_active !== 'semua') opts.limit = 200;
+  loadListData(role, listFilter_active[role], opts);
 }
 
 async function refreshList(role) {
@@ -3892,9 +3896,15 @@ function filterBySearchQuery(role) {
   // Apply CS lokasi filter (client-side)
   if (role === 'cs' && csLokasiFilter_active !== 'semua') {
     const lf = csLokasiFilter_active;
+    const lfName = lookupLokasi(lf).toLowerCase(); // resolve filter to name
     rows = rows.filter(r => {
       const lokasiRaw = String(r.Lokasi || '').trim();
-      return lokasiRaw === lf || lookupLokasi(lokasiRaw).toLowerCase() === lookupLokasi(lf).toLowerCase();
+      if (!lokasiRaw) return false;
+      // Direct match on ID
+      if (lokasiRaw === lf) return true;
+      // Resolve row lokasi to name and compare
+      const rowName = lookupLokasi(lokasiRaw).toLowerCase();
+      return rowName === lfName;
     });
   }
 
@@ -3930,8 +3940,12 @@ function csKantorFilter(kantor, btn) {
   parent.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   buildLokasiFilterTabs(kantor);
-  renderList('cs', listFilter_active.cs);
-  updateListMeta('cs');
+  // Fetch data lebih banyak saat filter kantor/lokasi aktif
+  if (kantor !== 'semua') {
+    loadListData('cs', listFilter_active.cs, { limit: 200 });
+  } else {
+    loadListData('cs', listFilter_active.cs);
+  }
 }
 
 function csLokasiFilter(lokasiID, btn) {
@@ -3963,7 +3977,7 @@ function buildLokasiFilterTabs(kantor) {
   lokasiList.forEach(l => {
     const id = _s(l.LokasiID);
     const nama = _s(l.NamaLokasi);
-    const short = nama.length > 18 ? nama.substring(0,18) + '…' : nama;
+    const short = nama.length > 25 ? nama.substring(0,25) + '…' : nama;
     html += `<button class="filter-tab" onclick="csLokasiFilter('${id}',this)">${_se(short)}</button>`;
   });
   container.innerHTML = html;
