@@ -951,6 +951,14 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <input type="text" id="drv-bbm-lainnya" placeholder="Tulis kegiatan...">
       </div>
       <div class="form-group">
+        <label>Jenis SPBU</label>
+        <div class="enum-group">
+          <button class="enum-btn" onclick="drvSetSPBU('Gembiraloka',this)">Gembiraloka</button>
+          <button class="enum-btn" onclick="drvSetSPBU('Non Gembiraloka',this)">Non Gembiraloka</button>
+        </div>
+        <input type="hidden" id="drv-jenis-spbu">
+      </div>
+      <div class="form-group">
         <label>Foto Struk BBM <span class="req">*</span></label>
         <div class="photo-picker">
         <button type="button" class="photo-pick-btn" onclick="openCamera('drv-foto-bbm')"><span class="icon">📷</span> Kamera</button>
@@ -1572,6 +1580,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button class="filter-tab" onclick="listFilter('security','Surat dan Paket',this)">Surat</button>
       <button class="filter-tab" onclick="listFilter('security','Pengecekan Genset',this)">Genset</button>
     </div>
+    <div class="filter-tabs" id="sec-status-filters" style="margin-top:6px">
+      <button class="filter-tab active" onclick="roleStatusFilter('security','semua',this)">Semua Status</button>
+      <button class="filter-tab" onclick="roleStatusFilter('security','Submitted',this)" style="--ftab-active-bg:#FFF3E0;--ftab-active-color:#A05A00">Submitted</button>
+      <button class="filter-tab" onclick="roleStatusFilter('security','Revisi',this)" style="--ftab-active-bg:#FCEBEB;--ftab-active-color:#991B1B">Revisi</button>
+      <button class="filter-tab" onclick="roleStatusFilter('security','Verified',this)" style="--ftab-active-bg:#E6F4EA;--ftab-active-color:#166534">Verified</button>
+    </div>
+    <div class="filter-tabs admin-kantor-filter" id="sec-kantor-filters" style="margin-top:6px;display:none">
+      <button class="filter-tab active" onclick="roleKantorFilter('security','semua',this)">Semua Kantor</button>
+      <button class="filter-tab" onclick="roleKantorFilter('security','Kalasan',this)">Kalasan</button>
+      <button class="filter-tab" onclick="roleKantorFilter('security','Veteran',this)">Veteran</button>
+      <button class="filter-tab" onclick="roleKantorFilter('security','Girijati',this)">Girijati</button>
+      <button class="filter-tab" onclick="roleKantorFilter('security','Girimulyo',this)">Girimulyo</button>
+    </div>
   </div>
   <div class="list-search">
     <input type="text" id="sec-search" placeholder="Cari nama pegawai atau detail..." oninput="onSearchInput('security', this.value)">
@@ -1600,6 +1621,17 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button class="filter-tab" onclick="listFilter('driver','Penggunaan BBM Kendaraan Dinas',this)">BBM</button>
       <button class="filter-tab" onclick="listFilter('driver','Rekapitulasi Penggunaan Kendaraan Dinas',this)">Rekap</button>
       <button class="filter-tab" onclick="listFilter('driver','Laporan Kondisi Kendaraan Dinas Roda Empat',this)">Kondisi</button>
+    </div>
+    <div class="filter-tabs" id="drv-status-filters" style="margin-top:6px">
+      <button class="filter-tab active" onclick="roleStatusFilter('driver','semua',this)">Semua Status</button>
+      <button class="filter-tab" onclick="roleStatusFilter('driver','Submitted',this)" style="--ftab-active-bg:#FFF3E0;--ftab-active-color:#A05A00">Submitted</button>
+      <button class="filter-tab" onclick="roleStatusFilter('driver','Revisi',this)" style="--ftab-active-bg:#FCEBEB;--ftab-active-color:#991B1B">Revisi</button>
+      <button class="filter-tab" onclick="roleStatusFilter('driver','Verified',this)" style="--ftab-active-bg:#E6F4EA;--ftab-active-color:#166534">Verified</button>
+    </div>
+    <div class="filter-tabs admin-kantor-filter" id="drv-kantor-filters" style="margin-top:6px;display:none">
+      <button class="filter-tab active" onclick="roleKantorFilter('driver','semua',this)">Semua Kantor</button>
+      <button class="filter-tab" onclick="roleKantorFilter('driver','Kalasan',this)">Kalasan</button>
+      <button class="filter-tab" onclick="roleKantorFilter('driver','Veteran',this)">Veteran</button>
     </div>
   </div>
   <div class="list-search">
@@ -1637,7 +1669,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button class="filter-tab" onclick="csStatusFilter('Revisi',this)" style="--ftab-active-bg:#FCEBEB;--ftab-active-color:#991B1B">Revisi</button>
       <button class="filter-tab" onclick="csStatusFilter('Verified',this)" style="--ftab-active-bg:#E6F4EA;--ftab-active-color:#166534">Verified</button>
     </div>
-    <div class="filter-tabs" id="cs-kantor-filters" style="margin-top:6px;display:none">
+    <div class="filter-tabs admin-kantor-filter" id="cs-kantor-filters" style="margin-top:6px;display:none">
       <button class="filter-tab active" onclick="csKantorFilter('semua',this)">Semua Kantor</button>
       <button class="filter-tab" onclick="csKantorFilter('Kalasan',this)">Kalasan</button>
       <button class="filter-tab" onclick="csKantorFilter('Veteran',this)">Veteran</button>
@@ -2581,7 +2613,7 @@ function go(screenId) {
   document.getElementById(screenId).classList.add('active');
   window.scrollTo(0, 0);
   if (screenId === 'screen-dashboard') loadDashboard();
-  if (screenId === 'screen-cs-list') showAdminCSFilters();
+  if (screenId === 'screen-cs-list' || screenId === 'screen-driver-list' || screenId === 'screen-security-list') showAdminFilters();
 }
 
 // ── Utility ───────────────────────────────────────────────────
@@ -2950,6 +2982,12 @@ function drvSetTipeKeg(v, btn) {
   }
 }
 
+function drvSetSPBU(v, btn) {
+  document.getElementById('drv-jenis-spbu').value = v;
+  btn.closest('.enum-group').querySelectorAll('.enum-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
 document.addEventListener('change', e => {
   if (e.target.id === 'drv-kegiatan-bbm') {
     const sel = e.target;
@@ -3092,6 +3130,7 @@ async function submitDriver() {
     hargaPerLiter: val('drv-harga-liter'),
     kegiatanBBM: val('drv-kegiatan-bbm'),
     kegiatanBBMLainnya: val('drv-bbm-lainnya'),
+    jenisSPBU: val('drv-jenis-spbu'),
     hari: val('drv-hari'),
     kegiatanRekapitulasi: val('drv-kegiatan-rekap'),
     kegiatanRekapitulasiLainnya: val('drv-rekap-lainnya'),
@@ -3701,8 +3740,8 @@ function getRowPhotoHtml(r) {
 let listData = { security: [], driver: [], cs: [] };
 let listFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
 let listSearch_query = { security: '', driver: '', cs: '' };
-let csStatusFilter_active = 'semua';
-let csKantorFilter_active = 'semua';
+let statusFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
+let kantorFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
 let csLokasiFilter_active = 'semua';
 let listOffset = { security: 0, driver: 0, cs: 0 };
 let listTotal = { security: 0, driver: 0, cs: 0 };
@@ -3786,7 +3825,7 @@ async function loadListData(role, filterOverride, options) {
 function loadMoreList(role) {
   if (!listHasMore[role]) return;
   const opts = { append: true };
-  if (role === 'cs' && csKantorFilter_active !== 'semua') opts.limit = 200;
+  if (kantorFilter_active[role] !== 'semua') opts.limit = 200;
   loadListData(role, listFilter_active[role], opts);
 }
 
@@ -3828,7 +3867,7 @@ function updateListMeta(role) {
   const searchQuery = listSearch_query[role];
 
   let txt = '';
-  if (searchQuery || (role === 'cs' && (csStatusFilter_active !== 'semua' || csKantorFilter_active !== 'semua' || csLokasiFilter_active !== 'semua'))) {
+  if (searchQuery || (role === 'cs' && (statusFilter_active.cs !== 'semua' || kantorFilter_active.cs !== 'semua' || csLokasiFilter_active !== 'semua')) || (role !== 'cs' && (statusFilter_active[role] !== 'semua' || kantorFilter_active[role] !== 'semua'))) {
     const matches = filterBySearchQuery(role).length;
     txt = matches + ' cocok dari ' + shown + ' dimuat';
   } else {
@@ -3875,34 +3914,26 @@ function filterBySearchQuery(role) {
   const q = listSearch_query[role];
   let rows = listData[role] || [];
 
-  // Apply CS status filter (client-side)
-  if (role === 'cs' && csStatusFilter_active !== 'semua') {
-    const sf = csStatusFilter_active;
-    rows = rows.filter(r => {
-      const st = String(r.Status || '').trim();
-      if (sf === 'Submitted') return st === 'Submitted';
-      if (sf === 'Revisi') return st === 'Revisi';
-      if (sf === 'Verified') return st === 'Verified';
-      return true;
-    });
+  // Apply status filter (client-side, all roles)
+  if (statusFilter_active[role] && statusFilter_active[role] !== 'semua') {
+    const sf = statusFilter_active[role];
+    rows = rows.filter(r => String(r.Status || '').trim() === sf);
   }
 
-  // Apply CS kantor filter (client-side)
-  if (role === 'cs' && csKantorFilter_active !== 'semua') {
-    const kf = csKantorFilter_active.toLowerCase();
+  // Apply kantor filter (client-side, all roles)
+  if (kantorFilter_active[role] && kantorFilter_active[role] !== 'semua') {
+    const kf = kantorFilter_active[role].toLowerCase();
     rows = rows.filter(r => String(r.Kantor || '').trim().toLowerCase() === kf);
   }
 
-  // Apply CS lokasi filter (client-side)
+  // Apply CS lokasi filter (client-side, CS only)
   if (role === 'cs' && csLokasiFilter_active !== 'semua') {
     const lf = csLokasiFilter_active;
-    const lfName = lookupLokasi(lf).toLowerCase(); // resolve filter to name
+    const lfName = lookupLokasi(lf).toLowerCase();
     rows = rows.filter(r => {
       const lokasiRaw = String(r.Lokasi || '').trim();
       if (!lokasiRaw) return false;
-      // Direct match on ID
       if (lokasiRaw === lf) return true;
-      // Resolve row lokasi to name and compare
       const rowName = lookupLokasi(lokasiRaw).toLowerCase();
       return rowName === lfName;
     });
@@ -3924,29 +3955,31 @@ function filterBySearchQuery(role) {
   });
 }
 
-function csStatusFilter(status, btn) {
-  csStatusFilter_active = status;
+function roleStatusFilter(role, status, btn) {
+  statusFilter_active[role] = status;
   const parent = btn.closest('.filter-tabs');
   parent.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  renderList('cs', listFilter_active.cs);
-  updateListMeta('cs');
+  renderList(role, listFilter_active[role]);
+  updateListMeta(role);
 }
 
-function csKantorFilter(kantor, btn) {
-  csKantorFilter_active = kantor;
-  csLokasiFilter_active = 'semua'; // reset lokasi saat ganti kantor
+function roleKantorFilter(role, kantor, btn) {
+  kantorFilter_active[role] = kantor;
+  if (role === 'cs') { csLokasiFilter_active = 'semua'; buildLokasiFilterTabs(kantor); }
   const parent = btn.closest('.filter-tabs');
   parent.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  buildLokasiFilterTabs(kantor);
-  // Fetch data lebih banyak saat filter kantor/lokasi aktif
   if (kantor !== 'semua') {
-    loadListData('cs', listFilter_active.cs, { limit: 200 });
+    loadListData(role, listFilter_active[role], { limit: 200 });
   } else {
-    loadListData('cs', listFilter_active.cs);
+    loadListData(role, listFilter_active[role]);
   }
 }
+
+// Backward compat aliases for CS HTML onclick
+function csStatusFilter(s, b) { roleStatusFilter('cs', s, b); }
+function csKantorFilter(k, b) { roleKantorFilter('cs', k, b); }
 
 function csLokasiFilter(lokasiID, btn) {
   csLokasiFilter_active = lokasiID;
@@ -3984,17 +4017,20 @@ function buildLokasiFilterTabs(kantor) {
   container.style.display = 'flex';
 }
 
-function showAdminCSFilters() {
+function showAdminFilters() {
   const isAdmin = currentUser && normalizeRoleFE(currentUser.role) === 'admin';
-  const kantorEl = document.getElementById('cs-kantor-filters');
-  if (kantorEl) kantorEl.style.display = isAdmin ? 'flex' : 'none';
+  document.querySelectorAll('.admin-kantor-filter').forEach(el => {
+    el.style.display = isAdmin ? 'flex' : 'none';
+  });
+  const lokasiEl = document.getElementById('cs-lokasi-filters');
+  if (!isAdmin && lokasiEl) { lokasiEl.style.display = 'none'; lokasiEl.innerHTML = ''; }
   if (!isAdmin) {
-    const lokasiEl = document.getElementById('cs-lokasi-filters');
-    if (lokasiEl) { lokasiEl.style.display = 'none'; lokasiEl.innerHTML = ''; }
-    csKantorFilter_active = 'semua';
+    kantorFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
     csLokasiFilter_active = 'semua';
   }
 }
+
+
 
 function renderList(role, filter) {
   const bodyId = { security: 'sec-list-body', driver: 'drv-list-body', cs: 'cs-list-body' };
@@ -4016,20 +4052,14 @@ function renderList(role, filter) {
     if (role === 'cs') jk = lookupKegiatan(jkRaw);
     else if (role === 'driver') jk = lookupKegiatanDriver(jkRaw);
 
-    // Status badge logic — CS uses koordinator status, others use follow-up
+    // Status badge logic — all roles use koordinator status
     let statusBadge;
-    if (role === 'cs') {
-      const st = String(r.Status || '').trim();
-      if (st === 'Verified') statusBadge = '<span class="badge badge-verified">Verified</span>';
-      else if (st === 'Revisi') statusBadge = '<span class="badge badge-revisi">Revisi</span>';
-      else if (st === 'Submitted') statusBadge = '<span class="badge badge-submitted">Submitted</span>';
-      else {
-        // Fallback untuk data lama tanpa kolom Status
-        statusBadge = (r.PerluFollowUp === 'Y' || r.PerluFollowUp === true)
-          ? '<span class="badge badge-fu">Follow Up</span>'
-          : '<span class="badge badge-ok">Selesai</span>';
-      }
-    } else {
+    const st = String(r.Status || '').trim();
+    if (st === 'Verified') statusBadge = '<span class="badge badge-verified">Verified</span>';
+    else if (st === 'Revisi') statusBadge = '<span class="badge badge-revisi">Revisi</span>';
+    else if (st === 'Submitted') statusBadge = '<span class="badge badge-submitted">Submitted</span>';
+    else {
+      // Fallback untuk data lama tanpa kolom Status
       statusBadge = (r.PerluFollowUp === 'Y' || r.PerluFollowUp === true)
         ? '<span class="badge badge-fu">Follow Up</span>'
         : '<span class="badge badge-ok">Selesai</span>';
@@ -4079,8 +4109,8 @@ function renderList(role, filter) {
       detail = `${r.Kantor||'-'} &bull; ${lokasiNama} &bull; ${shortDetail}`;
     }
 
-    // CS items are clickable for detail popup
-    const clickable = (role === 'cs') ? `cs-clickable" onclick="openCSDetail(${idx})` : ``;
+    // All items are clickable for detail popup
+    const clickable = `cs-clickable" onclick="openEntryDetail('${role}',${idx})`;
 
     return `
     <div class="list-item ${role} ${clickable}">
@@ -4264,23 +4294,70 @@ function shareFollowUpWA(sdJson) {
 }
 // ── CS Detail Popup & Koordinator Review ──────────────────────
 
-function getCSLogID(r) {
-  return r.LogID || r.CSID || r['ID (Key)'] || r.IDKey || r.ID || '';
+// ── Entry Detail Popup & Koordinator Review (all roles) ───────
+
+let _currentDetailRole = '';
+
+function getLogID(r) {
+  return r.LogID || r.CSID || r.DriverLogID || r.SecurityID || r['ID (Key)'] || r.IDKey || r.ID || '';
 }
 
-function openCSDetail(idx) {
-  const filtered = filterBySearchQuery('cs');
+function buildDetailSections(r, role) {
+  let sections = '';
+  if (role === 'cs') {
+    const jk = lookupKegiatan(r.Kegiatan || r.JenisKegiatan || '');
+    const lokasi = lookupLokasi(r.Lokasi);
+    const detailKeg = lookupDetailKegiatan(r.DetailKegiatanDilakukan || '');
+    sections += `<div class="cd-section"><div class="cd-label">Jenis Kegiatan</div><div class="cd-value">${_se(jk)}</div></div>`;
+    sections += `<div class="cd-section"><div class="cd-label">Lokasi</div><div class="cd-value">${_se(lokasi)}</div></div>`;
+    sections += `<div class="cd-section"><div class="cd-label">Detail Kegiatan</div><div class="cd-value">${_se(detailKeg)}</div></div>`;
+  } else if (role === 'driver') {
+    const jk = lookupKegiatanDriver(r.JenisKegiatan || '');
+    const kend = lookupKendaraan(r.KendaraanDinas || '');
+    sections += `<div class="cd-section"><div class="cd-label">Jenis Kegiatan</div><div class="cd-value">${_se(jk)}</div></div>`;
+    sections += `<div class="cd-section"><div class="cd-label">Kendaraan</div><div class="cd-value">${_se(kend)}</div></div>`;
+    if (r.LokasiTujuan) sections += `<div class="cd-section"><div class="cd-label">Tujuan</div><div class="cd-value">${_se(r.LokasiTujuan)}</div></div>`;
+    if (r.UraianKegiatan) sections += `<div class="cd-section"><div class="cd-label">Uraian</div><div class="cd-value">${_se(r.UraianKegiatan)}</div></div>`;
+  } else if (role === 'security') {
+    const jk = r.JenisKegiatan || '';
+    sections += `<div class="cd-section"><div class="cd-label">Jenis Kegiatan</div><div class="cd-value">${_se(jk)}</div></div>`;
+    if (r.Shift) sections += `<div class="cd-section"><div class="cd-label">Shift</div><div class="cd-value">${_se(r.Shift)}</div></div>`;
+    if (r.KegiatanPiket || r.KegiatanPiketDilakukan) {
+      const kp = lookupKegiatanPiket(r.KegiatanPiket || r.KegiatanPiketDilakukan || '');
+      sections += `<div class="cd-section"><div class="cd-label">Kegiatan Piket</div><div class="cd-value">${_se(kp)}</div></div>`;
+    }
+    if (r.StatusKendaraan) sections += `<div class="cd-section"><div class="cd-label">Status Kendaraan</div><div class="cd-value">${_se(r.StatusKendaraan)}</div></div>`;
+  }
+  if (r.Catatan) sections += `<div class="cd-section"><div class="cd-label">Catatan</div><div class="cd-value">${_se(r.Catatan)}</div></div>`;
+  return sections;
+}
+
+function buildFotoGrid(r, role) {
+  const urls = [];
+  const fields = role === 'driver'
+    ? ['Foto','FotoBBM','FotoKondisiSebelum','FotoKondisiSesudah','FotoKebersihanDalam','FotoKebersihanLuar','FotoTambahan','FotoKondisiKendaraan']
+    : role === 'security'
+    ? ['Foto','FotoPiket','FotoSurat','FotoGenset']
+    : ['Foto'];
+  fields.forEach(f => { const v = r[f]; if (v && String(v).trim() && !urls.includes(String(v).trim())) urls.push(String(v).trim()); });
+  if (!urls.length) return '<span style="color:var(--text3);font-size:12px">Tidak ada foto</span>';
+  return '<div class="cd-foto-grid">' + urls.map(u => {
+    const thumb = driveThumbUrl(u, 300);
+    return `<img src="${thumb}" onclick="window.open('${u}','_blank')" alt="Foto">`;
+  }).join('') + '</div>';
+}
+
+function openEntryDetail(role, idx) {
+  const filtered = filterBySearchQuery(role);
   const r = filtered[idx];
   if (!r) return;
+  _currentDetailRole = role;
   const overlay = document.getElementById('cs-detail-overlay');
   const card = document.getElementById('cs-detail-card');
 
   const nama = lookupNama(r.NamaPegawai);
-  const jk = lookupKegiatan(r.Kegiatan || r.JenisKegiatan || '');
-  const lokasi = lookupLokasi(r.Lokasi);
-  const detailKeg = lookupDetailKegiatan(r.DetailKegiatanDilakukan || '');
   const ts = r.Timestamp ? new Date(r.Timestamp).toLocaleString('id-ID', {day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
-  const logID = getCSLogID(r);
+  const logID = getLogID(r);
 
   const st = String(r.Status || '').trim();
   let statusClass = 'badge-submitted', statusLabel = 'Submitted';
@@ -4288,22 +4365,18 @@ function openCSDetail(idx) {
   else if (st === 'Revisi') { statusClass = 'badge-revisi'; statusLabel = '⚠ Revisi'; }
   else if (!st) { statusClass = 'badge-ok'; statusLabel = 'Selesai'; }
 
-  // Foto
-  const fotoUrl = r._foto || r.Foto || r.foto || '';
-  const fotoThumb = fotoUrl ? driveThumbUrl(fotoUrl, 300) : '';
-  const fotoHtml = fotoThumb
-    ? `<div class="cd-foto-grid"><img src="${fotoThumb}" onclick="window.open('${fotoUrl}','_blank')" alt="Foto"></div>`
-    : '<span style="color:var(--text3);font-size:12px">Tidak ada foto</span>';
+  const fotoHtml = buildFotoGrid(r, role);
+  const sectionsHtml = buildDetailSections(r, role);
 
   const isAdmin = currentUser && normalizeRoleFE(currentUser.role) === 'admin';
-  const isCS = currentUser && normalizeRoleFE(currentUser.role) === 'cs';
+  const userRole = normalizeRoleFE(currentUser?.role || '');
   const canReview = isAdmin;
-  const canResubmit = (isCS || isAdmin) && st === 'Revisi';
+  const canResubmit = (userRole === role || isAdmin) && st === 'Revisi';
 
-  // Action buttons
+  const reviewAction = role === 'cs' ? 'reviewCS' : role === 'driver' ? 'reviewDriver' : 'reviewSecurity';
+  const resubmitAction = role === 'cs' ? 'resubmitFotoCS' : role === 'driver' ? 'resubmitFotoDriver' : 'resubmitFotoSecurity';
+
   let actionsHtml = '';
-
-  // Catatan koordinator banner (shown for Revisi status to anyone)
   if (st === 'Revisi') {
     actionsHtml += `
       <div style="background:#FEF2F2;border-radius:var(--radius-sm);padding:12px;margin-top:10px">
@@ -4311,12 +4384,10 @@ function openCSDetail(idx) {
         <div style="font-size:12px;color:var(--text2)">${_se(r.LastReviewBy || '-')} • ${_se(r.LastReviewAt || '-')}</div>
       </div>`;
   }
-
-  // Review buttons (admin only, for Submitted or Revisi)
   if (canReview && (st === 'Submitted' || st === 'Revisi' || !st)) {
     actionsHtml += `
       <div class="cd-actions">
-        <button class="cd-btn-approve" onclick="reviewCSAction('${logID}','Verified')">✓ Laporan Sesuai</button>
+        <button class="cd-btn-approve" onclick="reviewAction('${logID}','Verified','${reviewAction}','${role}')">✓ Laporan Sesuai</button>
         <button class="cd-btn-revisi" onclick="showRevisiForm()">✎ Beri Catatan</button>
       </div>
       <div class="cd-catatan-form" id="cd-catatan-form" style="display:none">
@@ -4327,11 +4398,9 @@ function openCSDetail(idx) {
           </label>
           <span id="cd-review-foto-name" style="font-size:11px;color:var(--text3)"></span>
         </div>
-        <button class="cd-submit-review" onclick="reviewCSAction('${logID}','Revisi')">Kirim Catatan Revisi</button>
+        <button class="cd-submit-review" onclick="reviewAction('${logID}','Revisi','${reviewAction}','${role}')">Kirim Catatan Revisi</button>
       </div>`;
   }
-
-  // Resubmit button (CS or admin, only for Revisi status)
   if (canResubmit) {
     actionsHtml += `
       <div class="cd-actions" style="margin-top:10px">
@@ -4344,7 +4413,7 @@ function openCSDetail(idx) {
           </label>
           <span id="cd-resubmit-foto-name" style="font-size:11px;color:var(--text3)"></span>
         </div>
-        <button style="margin-top:8px;width:100%;padding:12px;background:var(--accent-cs);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer" onclick="resubmitFotoCS('${logID}')">Submit Ulang</button>
+        <button style="margin-top:8px;width:100%;padding:12px;background:var(--accent-cs);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer" onclick="resubmitFoto('${logID}','${resubmitAction}','${role}')">Submit Ulang</button>
       </div>`;
   }
 
@@ -4353,19 +4422,7 @@ function openCSDetail(idx) {
     <div class="cd-name">${_se(nama)}</div>
     <div class="cd-meta">${ts} • ${_se(r.Kantor || '-')}</div>
     <span class="cd-status ${statusClass}">${statusLabel}</span>
-    <div class="cd-section">
-      <div class="cd-label">Jenis Kegiatan</div>
-      <div class="cd-value">${_se(jk)}</div>
-    </div>
-    <div class="cd-section">
-      <div class="cd-label">Lokasi</div>
-      <div class="cd-value">${_se(lokasi)}</div>
-    </div>
-    <div class="cd-section">
-      <div class="cd-label">Detail Kegiatan</div>
-      <div class="cd-value">${_se(detailKeg)}</div>
-    </div>
-    ${r.Catatan ? `<div class="cd-section"><div class="cd-label">Catatan</div><div class="cd-value">${_se(r.Catatan)}</div></div>` : ''}
+    ${sectionsHtml}
     <div class="cd-section">
       <div class="cd-label">Foto Bukti</div>
       ${fotoHtml}
@@ -4376,14 +4433,13 @@ function openCSDetail(idx) {
 
   overlay.style.display = 'flex';
   requestAnimationFrame(() => overlay.classList.add('visible'));
-
-  // Load review history
-  if (logID) loadCSReviewHistory(logID);
+  if (logID) loadReviewHistory(role, logID);
 }
 
-function _se(s) { // safe escape
-  const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML;
-}
+// Keep backward compat
+function openCSDetail(idx) { openEntryDetail('cs', idx); }
+
+function _se(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
 function driveThumbUrl(url, size) {
   const s = String(url || '');
@@ -4405,20 +4461,14 @@ function closeCSDetail() {
   setTimeout(() => { overlay.style.display = 'none'; }, 250);
 }
 
-function showRevisiForm() {
-  document.getElementById('cd-catatan-form').style.display = 'block';
-}
-
-function showResubmitForm() {
-  document.getElementById('cd-resubmit-form').style.display = 'block';
-}
+function showRevisiForm() { document.getElementById('cd-catatan-form').style.display = 'block'; }
+function showResubmitForm() { document.getElementById('cd-resubmit-form').style.display = 'block'; }
 
 let _reviewFotoBase64 = '';
 let _resubmitFotoBase64 = '';
 
 function onReviewFotoSelected(input) {
-  const file = input.files[0];
-  if (!file) return;
+  const file = input.files[0]; if (!file) return;
   document.getElementById('cd-review-foto-name').textContent = file.name;
   const reader = new FileReader();
   reader.onload = e => { _reviewFotoBase64 = e.target.result; };
@@ -4426,97 +4476,75 @@ function onReviewFotoSelected(input) {
 }
 
 function onResubmitFotoSelected(input) {
-  const file = input.files[0];
-  if (!file) return;
+  const file = input.files[0]; if (!file) return;
   document.getElementById('cd-resubmit-foto-name').textContent = file.name;
   const reader = new FileReader();
   reader.onload = e => { _resubmitFotoBase64 = e.target.result; };
   reader.readAsDataURL(file);
 }
 
-async function reviewCSAction(logID, keputusan) {
+async function reviewAction(logID, keputusan, action, role) {
   if (keputusan === 'Verified') {
     if (!confirm('Setujui laporan ini sebagai SESUAI?')) return;
   }
-  let catatan = '';
-  let foto = '';
+  let catatan = '', foto = '';
   if (keputusan === 'Revisi') {
     catatan = (document.getElementById('cd-catatan-text')?.value || '').trim();
     if (!catatan) { showToast('Catatan wajib diisi'); return; }
     foto = _reviewFotoBase64;
   }
-
   setLoading(true);
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({
-        action: 'reviewCS',
-        token: currentUser?.token || '',
-        data: { logID, keputusan, catatan, foto }
-      })
+      body: JSON.stringify({ action: action, token: currentUser?.token || '', data: { logID, keputusan, catatan, foto } })
     });
     const result = await res.json();
     if (result.success) {
       showToast(keputusan === 'Verified' ? 'Laporan disetujui' : 'Catatan revisi terkirim');
-      closeCSDetail();
-      _reviewFotoBase64 = '';
-      refreshList('cs');
-    } else {
-      showToast('Gagal: ' + (result.error || 'tidak diketahui'));
-    }
-  } catch(e) {
-    showToast('Error: ' + e.message);
-  } finally {
-    setLoading(false);
-  }
+      closeCSDetail(); _reviewFotoBase64 = '';
+      refreshList(role);
+    } else { showToast('Gagal: ' + (result.error || 'tidak diketahui')); }
+  } catch(e) { showToast('Error: ' + e.message); }
+  finally { setLoading(false); }
 }
 
-async function resubmitFotoCS(logID) {
+// Backward compat
+async function reviewCSAction(logID, keputusan) { await reviewAction(logID, keputusan, 'reviewCS', 'cs'); }
+
+async function resubmitFoto(logID, action, role) {
   if (!_resubmitFotoBase64) { showToast('Pilih foto baru terlebih dahulu'); return; }
   if (!confirm('Submit ulang foto untuk laporan ini?')) return;
-
   setLoading(true);
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({
-        action: 'resubmitFotoCS',
-        token: currentUser?.token || '',
-        data: { logID, foto: _resubmitFotoBase64 }
-      })
+      body: JSON.stringify({ action: action, token: currentUser?.token || '', data: { logID, foto: _resubmitFotoBase64 } })
     });
     const result = await res.json();
     if (result.success) {
       showToast('Foto berhasil di-submit ulang');
-      closeCSDetail();
-      _resubmitFotoBase64 = '';
-      refreshList('cs');
-    } else {
-      showToast('Gagal: ' + (result.error || 'tidak diketahui'));
-    }
-  } catch(e) {
-    showToast('Error: ' + e.message);
-  } finally {
-    setLoading(false);
-  }
+      closeCSDetail(); _resubmitFotoBase64 = '';
+      refreshList(role);
+    } else { showToast('Gagal: ' + (result.error || 'tidak diketahui')); }
+  } catch(e) { showToast('Error: ' + e.message); }
+  finally { setLoading(false); }
 }
 
-async function loadCSReviewHistory(logID) {
+// Backward compat
+async function resubmitFotoCS(logID) { await resubmitFoto(logID, 'resubmitFotoCS', 'cs'); }
+
+async function loadReviewHistory(role, logID) {
   const container = document.getElementById('cd-review-history');
   if (!container) return;
   container.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">Memuat riwayat review...</div>';
-
   try {
     const res = await fetchJsonWithRetry(
-      APPS_SCRIPT_URL + '?action=getCSReviews&logID=' + encodeURIComponent(logID) + '&token=' + encodeURIComponent(currentUser?.token || '') + '&t=' + Date.now(),
+      APPS_SCRIPT_URL + '?action=getReviews&role=' + encodeURIComponent(role) + '&logID=' + encodeURIComponent(logID) + '&token=' + encodeURIComponent(currentUser?.token || '') + '&t=' + Date.now(),
       {}, { retries: 1, timeoutMs: 15000, retryDelayMs: 500 }
     );
     const reviews = res.reviews || [];
-    if (!reviews.length) {
-      container.innerHTML = '';
-      return;
-    }
+    if (!reviews.length) { container.innerHTML = ''; return; }
     container.innerHTML = `
       <div class="cd-label" style="margin-bottom:8px">Riwayat Review (${reviews.length})</div>
       ${reviews.map(rv => {
@@ -4537,6 +4565,11 @@ async function loadCSReviewHistory(logID) {
     container.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">Gagal memuat riwayat</div>';
   }
 }
+
+// Backward compat
+async function loadCSReviewHistory(logID) { await loadReviewHistory('cs', logID); }
+
+
 
 
 // ── Tandai Selesai Follow Up (admin only) ─────────────────────
