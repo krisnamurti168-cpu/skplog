@@ -637,7 +637,6 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -3517,21 +3516,30 @@ function resetForm(role) {
 
 // ── Submit Handler ────────────────────────────────────────────
 let lastSubmitRole = null;
+let pendingSubmitID = { cs: '', driver: '', security: '' };
+function newSubmitID_() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+}
 async function doSubmit(action, data, successMsg) {
   // Track role yang baru submit untuk navigasi sukses
   if (action === 'submitCS') lastSubmitRole = 'cs';
   else if (action === 'submitDriver') lastSubmitRole = 'driver';
   else if (action === 'submitSecurity') lastSubmitRole = 'security';
+  // ID unik per pengisian form — tetap sama saat Simpan ditekan ulang (anti data dobel)
+  if (!pendingSubmitID[lastSubmitRole]) pendingSubmitID[lastSubmitRole] = newSubmitID_();
+  data.submitID = pendingSubmitID[lastSubmitRole];
   setLoading(true);
   try {
     const result = await fetchJsonWithRetry(APPS_SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action, data, auth: currentUser?.token }),
-    }, { retries: 2, timeoutMs: 45000, retryDelayMs: 1000 });
+    }, { retries: 0, timeoutMs: 90000 });
     setLoading(false);
     if (result.success) {
       document.getElementById('success-msg').textContent = successMsg;
       // Reset form supaya saat dibuka lagi sudah bersih (aman dengan try-catch)
+      pendingSubmitID[lastSubmitRole] = '';
       if (lastSubmitRole) resetForm(lastSubmitRole);
       go('screen-success');
     } else {
@@ -3539,7 +3547,7 @@ async function doSubmit(action, data, successMsg) {
     }
   } catch (e) {
     setLoading(false);
-    showToast('Error koneksi. Coba lagi.');
+    showToast('Koneksi lambat. Aman tekan Simpan lagi.');
   }
 }
 
@@ -3745,6 +3753,7 @@ let kantorFilter_active = { security: 'semua', driver: 'semua', cs: 'semua' };
 let csLokasiFilter_active = 'semua';
 let listOffset = { security: 0, driver: 0, cs: 0 };
 let listTotal = { security: 0, driver: 0, cs: 0 };
+let listTotalExact = { security: true, driver: true, cs: true };
 let listHasMore = { security: false, driver: false, cs: false };
 let listLastFetch = { security: 0, driver: 0, cs: 0 };
 const LIST_PAGE_SIZE = 15;
@@ -3804,6 +3813,7 @@ async function loadListData(role, filterOverride, options) {
       listData[role] = newRows;
     }
     listTotal[role] = result.total || 0;
+    listTotalExact[role] = result.totalExact !== false;
     listHasMore[role] = !!result.hasMore;
     listLastFetch[role] = Date.now();
     listOffset[role] = (listData[role] || []).length;
@@ -3871,7 +3881,7 @@ function updateListMeta(role) {
     const matches = filterBySearchQuery(role).length;
     txt = matches + ' cocok dari ' + shown + ' dimuat';
   } else {
-    txt = shown + ' dari ' + total;
+    txt = listTotalExact[role] ? (shown + ' dari ' + total) : (shown + ' dimuat');
   }
   if (lastFetch) {
     txt += ' • ' + formatRelativeTime(lastFetch);
@@ -3904,7 +3914,7 @@ function updateLoadMoreUI(role) {
     wrap.style.display = '';
     btn.disabled = false;
     const remaining = (listTotal[role] || 0) - (listData[role] || []).length;
-    btn.textContent = 'Muat lebih banyak (' + remaining + ' lagi)';
+    btn.textContent = listTotalExact[role] ? ('Muat lebih banyak (' + remaining + ' lagi)') : 'Muat lebih banyak';
   } else {
     wrap.style.display = 'none';
   }
@@ -4762,7 +4772,7 @@ const LAPORAN_CONFIG = {
         { label: 'Tipe Kendaraan',             fn: r => r.TipeKendaraan },
         { label: 'Kendaraan Dinas',            fn: r => lookupKendaraan(_s(r.KendaraanDinas)) },
         { label: 'Jenis Kendaraan (Non-Dinas)',fn: r => r.JenisKendaraanManual },
-        { label: 'Plat Nomor',                 fn: r => r.PlatNomor },
+        { label: 'Plat Nomor',                 fn: r => r.PlatNomor || r.PlatNomorManual },
         { label: 'Nama Driver',                fn: r => _s(r.NamaDriver) ? lookupNama(r.NamaDriver) : (_s(r.NamaSopirManual) || '-') },
         { label: 'Jam Masuk',                  fn: r => fmtJam(r.JamMasuk) },
         { label: 'Jam Keluar',                 fn: r => fmtJam(r.JamKeluar) },
@@ -4909,6 +4919,22 @@ const LAPORAN_CONFIG = {
 
 // State modal
 let dlState = { role: '', bulan: '', jenisKegiatan: [] };
+
+// Library Excel dimuat hanya saat download (hemat ~900KB saat buka app)
+let _xlsxPromise = null;
+function loadXLSX_() {
+  if (window.XLSX) return Promise.resolve();
+  if (!_xlsxPromise) {
+    _xlsxPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve;
+      s.onerror = () => { _xlsxPromise = null; reject(new Error('Gagal memuat library Excel')); };
+      document.head.appendChild(s);
+    });
+  }
+  return _xlsxPromise;
+}
 
 // Nama bulan Indonesia
 const BULAN_ID = ['Januari','Februari','Maret','April','Mei','Juni',
@@ -5067,6 +5093,7 @@ async function processDownload() {
     btnLabel.textContent = 'Membuat file Excel...';
 
     // Buat workbook
+    await loadXLSX_();
     const wb = XLSX.utils.book_new();
 
     jenisKeys.forEach(jk => {
@@ -5324,6 +5351,7 @@ async function processAdminDownload() {
       : jenisKegiatan.filter(jk => jenisMap[jk]);
 
     btnLabel.textContent = 'Membuat file Excel...';
+    await loadXLSX_();
     const wb = XLSX.utils.book_new();
 
     jenisKeys.forEach(jk => {
